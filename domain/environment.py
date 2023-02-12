@@ -3,6 +3,7 @@ from typing import Optional, List, Any
 
 from domain.entitites import AliveEntity
 from domain.objects import Movement, Coordinates, PrayFood
+from contrib.utils import logger
 
 
 class EnvironmentException(Exception):
@@ -106,6 +107,7 @@ class Environment:
 
                     if entity.health == 0:
                         self.erase_object(Coordinates(x, y))
+                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
                         continue
 
                     if entity in moved_entity_cash:
@@ -137,7 +139,7 @@ class EnvironmentRunner:
             self.set_object_randomly(live_obj)
 
         for pray_food in range(pray_foods):
-            self.set_object_randomly(PrayFood(nutrition=10))
+            self.set_object_randomly(PrayFood(nutrition=5))
 
     def set_object_randomly(self, obj: Any) -> None:
         if not self.environment.has_space_left:
@@ -151,5 +153,5 @@ class EnvironmentRunner:
                 self.environment.respawn_object(random_coordinates, obj)
                 in_process = False
 
-    def run_live(self):
-        pass
+    def step_forward(self) -> List[List]:
+        return self.environment.get_next_state()
