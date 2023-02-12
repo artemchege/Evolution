@@ -38,7 +38,7 @@ class Environment:
             raise ObjectNotExistsInEnvironment(f'Object {obj} is missing in environment')
 
         if movement == Movement.STAY:
-            desired_position = Coordinates(frm.x, frm.y)
+            return
         elif movement == Movement.UP:
             desired_position = Coordinates(frm.x, frm.y - 1)
         elif movement == Movement.DOWN:
@@ -66,13 +66,21 @@ class Environment:
         if self.matrix[where.y][where.x] == 0:
             self.matrix[where.y][where.x] = obj
         else:
-            raise NotVacantPlaceException('desired position != 0')
+            raise NotVacantPlaceException('Desired position != 0')
 
     def get_object_coordinate(self, obj) -> Optional[Coordinates]:
         for y, row in enumerate(self.matrix):
             for x, element in enumerate(row):
                 if element == obj:
                     return Coordinates(x, y)
+
+    def get_next_state(self):
+        for y, row in enumerate(self.matrix):
+            for x, entity in enumerate(row):
+                if isinstance(entity, AliveEntity):
+                    movement: Movement = entity.get_move()
+                    self.make_move(movement, entity)
+        return self.matrix
 
     def __repr__(self):
         return f'Matrix {self.width}x{self.height}'

@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+import random
+
+from domain.objects import Movement
 
 
 class AliveEntity(ABC):
@@ -8,7 +11,7 @@ class AliveEntity(ABC):
         self.health = health
 
     @abstractmethod
-    def get_move(self):
+    def get_move(self) -> Movement:
         pass
 
     @abstractmethod
@@ -22,7 +25,10 @@ class Pray(AliveEntity):
         super().__init__(*args, **kwargs)
 
     def get_move(self):
-        pass
+
+        # TODO: Reinforcement Neural Network
+
+        return random.choice(list(Movement))
 
     def eat(self):
         pass
