@@ -1,3 +1,5 @@
+from typing import Optional
+
 from domain.entitites import AliveEntity
 from domain.objects import Movement, Coordinates
 
@@ -8,6 +10,14 @@ class EnvironmentException(Exception):
 
 class NotVacantPlaceException(EnvironmentException):
     """ This place is already occupied """
+
+
+class UnsupportedMovement(EnvironmentException):
+    """ This movement is not supported """
+
+
+class ObjectNotExistsInEnvironment(EnvironmentException):
+    """ Alas """
 
 
 class Environment:
@@ -22,7 +32,11 @@ class Environment:
             for i in range(width)
         ]
 
-    def make_move(self, frm: Coordinates, movement: Movement, who: AliveEntity):
+    def make_move(self, movement: Movement, obj: AliveEntity):
+        frm: Optional[Coordinates] = self.get_object_coordinate(obj)
+        if not frm:
+            raise ObjectNotExistsInEnvironment(f'Object {obj} is missing in environment')
+
         if movement == Movement.STAY:
             desired_position = Coordinates(frm.x, frm.y)
         elif movement == Movement.UP:
@@ -31,21 +45,34 @@ class Environment:
             desired_position = Coordinates(frm.x, frm.y + 1)
         elif movement == Movement.LEFT:
             desired_position = Coordinates(frm.x - 1, frm.y)
-        else:
-            # right
+        elif movement == Movement.RIGHT:
             desired_position = Coordinates(frm.x + 1, frm.y)
+        elif movement == Movement.UP_LEFT:
+            desired_position = Coordinates(frm.x - 1, frm.y - 1)
+        elif movement == Movement.UP_RIGHT:
+            desired_position = Coordinates(frm.x + 1, frm.y - 1)
+        elif movement == Movement.DOWN_LEFT:
+            desired_position = Coordinates(frm.x - 1, frm.y + 1)
+        elif movement == Movement.DOWN_RIGHT:
+            desired_position = Coordinates(frm.x + 1, frm.y + 1)
+        else:
+            raise UnsupportedMovement(f'This movement is not supported: {movement}')
 
         if self.matrix[desired_position.y][desired_position.x] == 0:
-            self.matrix[desired_position.y][desired_position.x] = who  # noqa
+            self.matrix[desired_position.y][desired_position.x] = obj  # noqa
             self.matrix[frm.y][frm.x] = 0
-            who.change_coordinates(desired_position)
 
     def respawn_object(self, where: Coordinates, obj):
         if self.matrix[where.y][where.x] == 0:
             self.matrix[where.y][where.x] = obj
-            obj.change_coordinates(where)
         else:
             raise NotVacantPlaceException('desired position != 0')
+
+    def get_object_coordinate(self, obj) -> Optional[Coordinates]:
+        for y, row in enumerate(self.matrix):
+            for x, element in enumerate(row):
+                if element == obj:
+                    return Coordinates(x, y)
 
     def __repr__(self):
         return f'Matrix {self.width}x{self.height}'
