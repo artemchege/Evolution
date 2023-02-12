@@ -1,0 +1,6 @@
+venv
+checkers_tutorial/
+Training/
+.idea/
+.ipynb_checkpoints/
+stable_diff_tutorial/
