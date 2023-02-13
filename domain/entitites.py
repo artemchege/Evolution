@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 import random
+from typing import List
+
 from contrib.utils import logger
 
 from domain.objects import Movement, PrayFood
@@ -13,7 +15,7 @@ class AliveEntity(ABC):
         self.lived_for = 0
 
     @abstractmethod
-    def get_move(self, environment_around=None) -> Movement:
+    def get_move(self, observation: List[List]) -> Movement:
         pass
 
     @abstractmethod
@@ -29,7 +31,7 @@ class PrayNoBrain(AliveEntity):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def get_move(self, environment_around=None) -> Movement:
+    def get_move(self, observation: List[List]) -> Movement:
         self.health -= 1
         self.increase_lived_for()
         next_move = random.choice(list(Movement))

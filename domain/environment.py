@@ -32,6 +32,7 @@ class Environment:
 
         self.width: int = width
         self.height: int = height
+        self.replenish_food = True
 
         self.matrix: List[List] = [
             [0 if i not in (0, width - 1) and j not in (0, height - 1) else None for j in range(height)]
@@ -98,10 +99,13 @@ class Environment:
             obj.eat(self.matrix[desired_coordinates.y][desired_coordinates.x])
             self.matrix[desired_coordinates.y][desired_coordinates.x] = obj
             self.matrix[from_.y][from_.x] = 0
+            if self.replenish_food:
+                self._set_object_randomly(PrayFood(5))
 
     def _respawn_object(self, where: Coordinates, obj) -> None:
         if self.matrix[where.y][where.x] == 0:
             self.matrix[where.y][where.x] = obj
+            logger.debug(f'Object {obj} was respawned at {where}')
         else:
             raise NotVacantPlaceException('Desired position != 0')
 
@@ -118,7 +122,7 @@ class Environment:
                     return Coordinates(x, y)
 
     def _get_next_state(self) -> List[List]:
-        moved_entity_cash = []
+        moved_entity_cash: List[AliveEntity] = []
 
         for y, row in enumerate(self.matrix):
             for x, entity in enumerate(row):
@@ -132,11 +136,18 @@ class Environment:
                     if entity in moved_entity_cash:
                         continue
 
-                    movement: Movement = entity.get_move()
+                    observation: List[List] = self._get_observation(Coordinates(x, y))
+                    movement: Movement = entity.get_move(observation=observation)
                     self._make_move(movement, entity)
                     moved_entity_cash.append(entity)
 
         return self.matrix
+
+    def _get_observation(self, point_of_observation: Coordinates) -> List[List]:
+        return [
+            [row[point_of_observation.x-1:point_of_observation.x+2]]
+            for row in self.matrix[point_of_observation.y-1:point_of_observation.y+2]
+        ]
 
     def _get_random_coordinates(self) -> Coordinates:
         return Coordinates(
@@ -163,12 +174,12 @@ class Environment:
 if __name__ == '__main__':
     # benchmark
     results_lived_for = []
-    for episode in range(20):
+    for episode in range(500):
 
         # setup
-        environment = Environment(10, 10)
-        pray = PrayNoBrain('Mammoth', 5)
-        environment.setup_initial_state(live_objs=[pray], pray_foods=10)
+        environment = Environment(15, 15)
+        pray = PrayNoBrain('Mammoth', 10)
+        environment.setup_initial_state(live_objs=[pray], pray_foods=50, nutrition=5)
 
         # run
         game_over = False
