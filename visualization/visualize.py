@@ -3,24 +3,24 @@ from typing import List
 import pygame
 
 from contrib.utils import logger
-from domain.entitites import PrayNoBrain, AliveEntity
-from domain.environment import EnvironmentRunner, Environment
+from domain.entitites import AliveEntity
+from domain.environment import Environment
 from domain.objects import Coordinates, PrayFood
 from visualization.constants import GREY_DARK, GREY_LIGHT, GREEN, BLUE, BLACK
 
 
 class Visualizer:
-    def __init__(self, runner: EnvironmentRunner):
+    def __init__(self, runner: Environment):
         pygame.display.set_caption('AI')
 
         self.window_width = 800
         self.window_height = 800
         self.FPS = 1
         self.window = pygame.display.set_mode((self.window_width, self.window_height))
-        self.environment_runner: EnvironmentRunner = runner
+        self.environment_runner: Environment = runner
 
-        self.number_of_rows: int = self.environment_runner.environment.height
-        self.number_of_columns: int = self.environment_runner.environment.width
+        self.number_of_rows: int = self.environment_runner.height
+        self.number_of_columns: int = self.environment_runner.width
         self.cell_width: int = self.window_width // self.number_of_columns
         self.cell_height: int = self.window_height // self.number_of_rows
 
@@ -67,19 +67,11 @@ class Visualizer:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     logger.debug(f'Touches are not supported')
 
-            state_to_render: List[List] = self.environment_runner.step_forward()
+            state_to_render, _ = self.environment_runner.step_forward()
             self.create_blank_space()
             self.render(state_to_render)
             pygame.display.update()
 
         pygame.quit()
         logger.debug('Game was closed')
-
-
-if __name__ == '__main__':
-    environment = Environment(15, 15)
-    man = PrayNoBrain('Artem', 50)
-    environment_runner = EnvironmentRunner(environment)
-    environment_runner.setup_initial_state(live_objs=[man], pray_foods=2)
-    Visualizer(environment_runner).run()
 
