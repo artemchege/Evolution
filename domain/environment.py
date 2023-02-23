@@ -1,7 +1,8 @@
 import random
+from abc import abstractmethod, ABC
 from typing import Optional, List, Any, Tuple
 
-from domain.entitites import AliveEntity, PrayNoBrain
+from domain.entitites import AliveEntity
 from domain.objects import Movement, Coordinates, PrayFood
 from contrib.utils import logger
 
@@ -26,18 +27,15 @@ class SetupEnvironmentError(EnvironmentException):
     """ No space left in environment """
 
 
-class Environment:
+class Environment(ABC):
+    """ Environment that represent world around living objects and key rules """
 
-    def __init__(self, width: int, height: int):
+    def __init__(self, width: int, height: int, replenish_food: bool = True):
 
         self.width: int = width
         self.height: int = height
-        self.replenish_food = True
-
-        self.matrix: List[List] = [
-            [0 if i not in (0, width - 1) and j not in (0, height - 1) else None for j in range(height)]
-            for i in range(width)
-        ]
+        self.replenish_food = replenish_food
+        self.matrix: List[List] = self._create_blank_matrix()
 
     @property
     def has_space_left(self) -> bool:
@@ -56,15 +54,27 @@ class Environment:
         return True
 
     def setup_initial_state(self, live_objs: List[AliveEntity], pray_foods: int, nutrition=3):
+        self.matrix = self._create_blank_matrix()
+
         for live_obj in live_objs:
             self._set_object_randomly(live_obj)
 
         for pray_food in range(pray_foods):
             self._set_object_randomly(PrayFood(nutrition=nutrition))
 
-    def step_forward(self) -> Tuple[List[List], bool]:
-        next_state = self._get_next_state()
+    def step_living_regime(self) -> Tuple[List[List], bool]:
+        next_state: List[List] = self._get_next_state()
         return next_state, self.game_over
+
+    @abstractmethod
+    def _get_next_state(self) -> List[List]:
+        pass
+
+    def _create_blank_matrix(self):
+        return [
+            [0 if i not in (0, self.width - 1) and j not in (0, self.height - 1) else None for j in range(self.height)]
+            for i in range(self.width)
+        ]
 
     def _make_move(self, movement: Movement, obj: AliveEntity) -> None:
         from_: Optional[Coordinates] = self._get_object_coordinates(obj)
@@ -121,32 +131,10 @@ class Environment:
                 if element == obj:
                     return Coordinates(x, y)
 
-    def _get_next_state(self) -> List[List]:
-        moved_entity_cash: List[AliveEntity] = []
-
-        for y, row in enumerate(self.matrix):
-            for x, entity in enumerate(row):
-                if isinstance(entity, AliveEntity):
-
-                    if entity.health == 0:
-                        self._erase_object(Coordinates(x, y))
-                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
-                        continue
-
-                    if entity in moved_entity_cash:
-                        continue
-
-                    observation: List[List] = self._get_observation(Coordinates(x, y))
-                    movement: Movement = entity.get_move(observation=observation)
-                    self._make_move(movement, entity)
-                    moved_entity_cash.append(entity)
-
-        return self.matrix
-
     def _get_observation(self, point_of_observation: Coordinates) -> List[List]:
         return [
-            [row[point_of_observation.x-1:point_of_observation.x+2]]
-            for row in self.matrix[point_of_observation.y-1:point_of_observation.y+2]
+            row[point_of_observation.x - 1:point_of_observation.x + 2]
+            for row in self.matrix[point_of_observation.y - 1:point_of_observation.y + 2]
         ]
 
     def _get_random_coordinates(self) -> Coordinates:
@@ -171,20 +159,63 @@ class Environment:
         return f'Matrix {self.width}x{self.height}'
 
 
-if __name__ == '__main__':
-    # benchmark
-    results_lived_for = []
-    for episode in range(500):
+class EnvironmentTrainRegime(Environment):
+    """ Must be used in gym.Env environment runners to train models. Key difference is that in this subclass an
+    action of a living object is set from outside (from training model) in process of RL training. """
 
-        # setup
-        environment = Environment(15, 15)
-        pray = PrayNoBrain('Mammoth', 10)
-        environment.setup_initial_state(live_objs=[pray], pray_foods=50, nutrition=5)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.movement_from_outside: Optional[Movement] = None
 
-        # run
-        game_over = False
-        while not game_over:
-            _, game_over = environment.step_forward()
-        results_lived_for.append(pray.lived_for)
+    def set_movement_from_outside(self, movement: Movement):
+        self.movement_from_outside = movement
 
-    logger.info(f'Average lived for is: {sum(results_lived_for)/len(results_lived_for)}')
+    def _get_next_state(self) -> List[List]:
+        moved_entity_cash: List[AliveEntity] = []
+
+        for y, row in enumerate(self.matrix):
+            for x, entity in enumerate(row):
+                if isinstance(entity, AliveEntity):
+
+                    if entity.health == 0:
+                        self._erase_object(Coordinates(x, y))
+                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
+                        continue
+
+                    if entity in moved_entity_cash:
+                        continue
+
+                    entity.get_move(observation=[[]])  # does not matter, movement is set in set_movement_from_outside
+                    movement: Movement = self.movement_from_outside
+
+                    self._make_move(movement, entity)
+                    moved_entity_cash.append(entity)
+
+        return self.matrix
+
+
+class EnvironmentLiveRegime(Environment):
+    """ Must be used with already trained entities without gym.Env just to look at how objects behaves. Key difference
+    is that in this subclass each living object id asked about its next movement """
+
+    def _get_next_state(self) -> List[List]:
+        moved_entity_cash: List[AliveEntity] = []
+
+        for y, row in enumerate(self.matrix):
+            for x, entity in enumerate(row):
+                if isinstance(entity, AliveEntity):
+
+                    if entity.health == 0:
+                        self._erase_object(Coordinates(x, y))
+                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
+                        continue
+
+                    if entity in moved_entity_cash:
+                        continue
+
+                    observation: List[List] = self._get_observation(Coordinates(x, y))
+                    movement: Movement = entity.get_move(observation=observation)  # ask each entity about next move
+                    self._make_move(movement, entity)
+                    moved_entity_cash.append(entity)
+
+        return self.matrix
