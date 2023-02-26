@@ -20,6 +20,19 @@ class Movement(enum.Enum):
     DOWN_RIGHT = 'DOWN_RIGHT'
 
 
+MOVEMENT_MAPPER_ADJACENT = {
+    0: Movement.STAY,
+    1: Movement.UP_LEFT,
+    2: Movement.UP,
+    3: Movement.UP_RIGHT,
+    4: Movement.RIGHT,
+    5: Movement.DOWN_RIGHT,
+    6: Movement.DOWN,
+    7: Movement.DOWN_LEFT,
+    8: Movement.LEFT,
+}
+
+
 @dataclass
 class PrayFood:
     nutrition: int
