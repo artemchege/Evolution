@@ -1,5 +1,6 @@
 import enum
 from dataclasses import dataclass
+from typing import Callable
 
 
 @dataclass
@@ -34,5 +35,19 @@ MOVEMENT_MAPPER_ADJACENT = {
 
 
 @dataclass
-class PrayFood:
+class HerbivoreFood:
     nutrition: int
+
+
+@dataclass
+class TrainingSetup:
+    # food setup
+    herbivore_food_amount: int
+    herbivore_food_nutrition: int
+    replenish_food: bool
+
+    # living obj setup
+    living_object_name: str
+    living_object_class: Callable  # HerbivoreNoBrain, cannot typehint due to import circle
+    living_object_initial_health: int
+    live_length: int = 1000

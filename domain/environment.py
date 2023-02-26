@@ -3,7 +3,7 @@ from abc import abstractmethod, ABC
 from typing import Optional, List, Any, Tuple
 
 from domain.entitites import AliveEntity
-from domain.objects import Movement, Coordinates, PrayFood
+from domain.objects import Movement, Coordinates, HerbivoreFood
 from contrib.utils import logger
 
 
@@ -30,11 +30,12 @@ class SetupEnvironmentError(EnvironmentException):
 class Environment(ABC):
     """ Environment that represent world around living objects and key rules """
 
-    def __init__(self, width: int, height: int, replenish_food: bool = True):
+    def __init__(self, width: int, height: int, food_nutrition: int, replenish_food: bool = True):
 
         self.width: int = width
         self.height: int = height
-        self.replenish_food = replenish_food
+        self.replenish_food: bool = replenish_food
+        self.food_nutrition: int = food_nutrition
         self.matrix: List[List] = self._create_blank_matrix()
 
     @property
@@ -53,18 +54,22 @@ class Environment(ABC):
                     return False
         return True
 
-    def setup_initial_state(self, live_objs: List[AliveEntity], pray_foods: int, nutrition=3):
+    def setup_initial_state(self, live_objs: List[AliveEntity], herbivore_food_amount: int, nutrition=3):
         self.matrix = self._create_blank_matrix()
 
         for live_obj in live_objs:
             self._set_object_randomly(live_obj)
 
-        for pray_food in range(pray_foods):
-            self._set_object_randomly(PrayFood(nutrition=nutrition))
+        for _ in range(herbivore_food_amount):
+            self._set_object_randomly(HerbivoreFood(nutrition=nutrition))
 
     def step_living_regime(self) -> Tuple[List[List], bool]:
         next_state: List[List] = self._get_next_state()
         return next_state, self.game_over
+
+    def get_living_object_observation(self, living_obj: AliveEntity) -> List[List]:
+        living_object_coordinates: Optional[Coordinates] = self._get_object_coordinates(living_obj)
+        return self._get_observation(living_object_coordinates)
 
     @abstractmethod
     def _get_next_state(self) -> List[List]:
@@ -105,12 +110,12 @@ class Environment(ABC):
         if self.matrix[desired_coordinates.y][desired_coordinates.x] == 0:
             self.matrix[desired_coordinates.y][desired_coordinates.x] = obj
             self.matrix[from_.y][from_.x] = 0
-        elif isinstance(self.matrix[desired_coordinates.y][desired_coordinates.x], PrayFood):
+        elif isinstance(self.matrix[desired_coordinates.y][desired_coordinates.x], HerbivoreFood):
             obj.eat(self.matrix[desired_coordinates.y][desired_coordinates.x])
             self.matrix[desired_coordinates.y][desired_coordinates.x] = obj
             self.matrix[from_.y][from_.x] = 0
             if self.replenish_food:
-                self._set_object_randomly(PrayFood(5))
+                self._set_object_randomly(HerbivoreFood(self.food_nutrition))
 
     def _respawn_object(self, where: Coordinates, obj) -> None:
         if self.matrix[where.y][where.x] == 0:
@@ -167,7 +172,7 @@ class EnvironmentTrainRegime(Environment):
         super().__init__(*args, **kwargs)
         self.movement_from_outside: Optional[Movement] = None
 
-    def set_movement_from_outside(self, movement: Movement):
+    def set_next_movement(self, movement: Movement):
         self.movement_from_outside = movement
 
     def _get_next_state(self) -> List[List]:

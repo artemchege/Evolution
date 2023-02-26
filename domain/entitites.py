@@ -8,17 +8,17 @@ from stable_baselines3 import PPO
 
 from contrib.utils import logger
 
-from domain.objects import Movement, PrayFood, MOVEMENT_MAPPER_ADJACENT
+from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT
 
 
 class MatrixConverter:
 
     @staticmethod
-    def from_world_env_to_gym_env(matrix: List[List]) -> np:
+    def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
         replace_zeroes_to_ones = [[1 if x == 0 else x for x in row] for row in matrix]
         replace_none_to_zeroes = [[0 if x is None or isinstance(x, HerbivoreNoBrain) else x for x in row] for row in
                                   replace_zeroes_to_ones]
-        replace_food_to_two = [[2 if isinstance(x, PrayFood) else x for x in row] for row in replace_none_to_zeroes]
+        replace_food_to_two = [[2 if isinstance(x, HerbivoreFood) else x for x in row] for row in replace_none_to_zeroes]
         return np.array(replace_food_to_two).ravel()
 
 
@@ -34,7 +34,7 @@ class AliveEntity(ABC):
         pass
 
     @abstractmethod
-    def eat(self, food: PrayFood) -> None:
+    def eat(self, food: HerbivoreFood) -> None:
         pass
 
     def increase_lived_for(self) -> None:
@@ -54,7 +54,7 @@ class HerbivoreNoBrain(AliveEntity):
         logger.debug(f'{self} moves {next_move} health {self.health}')
         return next_move
 
-    def eat(self, food: PrayFood) -> None:
+    def eat(self, food: HerbivoreFood) -> None:
         self.health += food.nutrition
         logger.debug(f'{self.name} ate! New health: {self.health}')
 
@@ -73,7 +73,7 @@ class HerbivoreTrained100000(HerbivoreNoBrain):
         self.health -= 1
         self.increase_lived_for()
 
-        converted_observation = self.matrix_converted.from_world_env_to_gym_env(observation)
+        converted_observation = self.matrix_converted.from_environment_to_stable_baseline(observation)
         action_num, _ = self.model.predict(converted_observation)
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
         logger.debug(f'{self} moves {movement} health {self.health}')
