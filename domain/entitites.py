@@ -44,6 +44,8 @@ class AliveEntity(ABC):
 class HerbivoreNoBrain(AliveEntity):
     """ Not trained herbivore, movements are random """
 
+    # TODO: нейминг нудачный, сделать сабкласс и назвать травоядное без движения
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
