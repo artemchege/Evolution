@@ -38,6 +38,8 @@ class Visualizer:
     def run(self):
         """ For standalone usage without stable baseline3 and Gym """
 
+        # TODO: возможно не отвественность визалайзера, быть может создать раннер отдельно и явно
+
         run = True
         while run:
             for event in pygame.event.get():

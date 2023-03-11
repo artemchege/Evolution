@@ -30,12 +30,22 @@ class SetupEnvironmentError(EnvironmentException):
 class Environment(ABC):
     """ Environment that represent world around living objects and key rules """
 
-    def __init__(self, width: int, height: int, food_nutrition: int, replenish_food: bool = True):
+    def __init__(
+            self,
+            width: int,
+            height: int,
+            food_nutrition: int,
+            replenish_food: bool = True,
+            herbivore_food_amount=50,
+            nutrition=3,
+    ):
 
         self.width: int = width
         self.height: int = height
         self.replenish_food: bool = replenish_food
         self.food_nutrition: int = food_nutrition
+        self.herbivore_food_amount = herbivore_food_amount
+        self.nutrition = nutrition
         self.matrix: List[List] = self._create_blank_matrix()
 
     @property
@@ -54,14 +64,14 @@ class Environment(ABC):
                     return False
         return True
 
-    def setup_initial_state(self, live_objs: List[AliveEntity], herbivore_food_amount: int, nutrition=3):
+    def setup_initial_state(self, live_objs: List[AliveEntity]):
         self.matrix = self._create_blank_matrix()
 
         for live_obj in live_objs:
             self._set_object_randomly(live_obj)
 
-        for _ in range(herbivore_food_amount):
-            self._set_object_randomly(HerbivoreFood(nutrition=nutrition))
+        for _ in range(self.herbivore_food_amount):
+            self._set_object_randomly(HerbivoreFood(nutrition=self.nutrition))
 
     def step_living_regime(self) -> Tuple[List[List], bool]:
         next_state: List[List] = self._get_next_state()

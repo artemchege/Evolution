@@ -5,20 +5,31 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from contrib.utils import logger
-from domain.entitites import HerbivoreNoBrain, HerbivoreTrained100000
+from domain.entitites import HerbivoreBase, HerbivoreTrained100000, HerbivoreTrain
 from domain.environment import EnvironmentTrainRegime, EnvironmentLiveRegime
 from domain.objects import Movement, Coordinates, MOVEMENT_MAPPER_ADJACENT, TrainingSetup
-from evolution.training import HerbivoreTrainingRunner
+from evolution.training import HerbivoreGym
 from visualization.visualize import Visualizer
 
 
 def visualize_trained_model_visualizer_runner():
     # Визуализация тренированной модели через мое окружение
-    environment = EnvironmentLiveRegime(15, 15, True)
+    environment = EnvironmentLiveRegime(
+        width=15,
+        height=15,
+        replenish_food=True,
+        herbivore_food_amount=30,
+        food_nutrition=3,
+    )
     # pray_1 = HerbivoreNoBrain('Mammoth', 10)
     # pray_2 = HerbivoreNoBrain('Dodo bird', 15)
-    trained_prey = HerbivoreTrained100000('Crow', 10)
-    environment.setup_initial_state(live_objs=[trained_prey], herbivore_food_amount=25, nutrition=5)
+    # trained_prey = HerbivoreTrained100000('Crow', 10)
+    herb_from_the_beg = HerbivoreTrain(
+        name='Lolka',
+        health=30,
+        env=environment,
+    )
+    environment.setup_initial_state(live_objs=[herb_from_the_beg])   # todo: возможно отвественность раннера, который надо создать
     Visualizer(environment).run()
 
 
@@ -29,12 +40,12 @@ def visualize_training():
         herbivore_food_nutrition=2,
         replenish_food=True,
         living_object_name='Mammoth',
-        living_object_class=HerbivoreNoBrain,
+        living_object_class=HerbivoreBase,
         living_object_initial_health=10,
         live_length=5000,
     )
     episodes = 5000
-    train_env_v = HerbivoreTrainingRunner(
+    train_env_v = HerbivoreGym(
         movement_class=Movement,
         environment=EnvironmentTrainRegime(
             width=16,
@@ -54,7 +65,7 @@ def visualize_training():
         # Подменяем окружения и обучаем модель, как закончили, меняем окружение обратно и визуализируем, получается
         # так что на отдельном окружении тренируем, на отдельном показываем, как только в режиме показа сущность
         # умерла - отправляем на новую тренировку. _v - визуализация, _l - обучение.
-        train_env_l = HerbivoreTrainingRunner(
+        train_env_l = HerbivoreGym(
             movement_class=Movement,
             environment=EnvironmentTrainRegime(
                 width=16,

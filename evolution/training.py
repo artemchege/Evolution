@@ -1,17 +1,19 @@
 from enum import EnumMeta
 from typing import List, Tuple
 
+import gym
 import numpy as np
-from gym import Env
 from gym.spaces import Discrete, MultiDiscrete
 
-from domain.entitites import HerbivoreNoBrain, MatrixConverter
+from domain.entitites import HerbivoreBase, MatrixConverter
 from domain.environment import EnvironmentTrainRegime
 from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, TrainingSetup
 from visualization.visualize import Visualizer
 
+# TODO: переименовать классы в GymEnv
 
-class HerbivoreTrainingRunner(Env):
+
+class HerbivoreGym(gym.Env):
     """ Custom Gym environment that runs training process """
 
     def __init__(
@@ -25,9 +27,12 @@ class HerbivoreTrainingRunner(Env):
         self.observation_space = MultiDiscrete([3] * 9)
         self.setup: TrainingSetup = setup
 
-        self.herbivore: HerbivoreNoBrain = self._create_herbivore()
+        # self.herbivore: HerbivoreBase = self._create_herbivore()
+        self.herbivore = None
         self.visualizer = Visualizer(self.environment)
         self.matrix_converted = MatrixConverter()
+
+        # self.reset()  # ???
 
     def step(self, action: int) -> Tuple[np.ndarray, int, bool, dict]:
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[action]
@@ -51,12 +56,10 @@ class HerbivoreTrainingRunner(Env):
             self.visualizer.render_step(self.environment.matrix)
 
     def reset(self) -> np.ndarray:
-        self.herbivore: HerbivoreNoBrain = self._create_herbivore()
+        self.herbivore: HerbivoreBase = self._create_herbivore()
 
         self.environment.setup_initial_state(
             live_objs=[self.herbivore],
-            herbivore_food_amount=self.setup.herbivore_food_amount,
-            nutrition=self.setup.herbivore_food_nutrition,
         )
 
         return self._get_herbivore_observation()
@@ -65,8 +68,9 @@ class HerbivoreTrainingRunner(Env):
         state_around_obj_list: List[List] = self.environment.get_living_object_observation(self.herbivore)
         return self.matrix_converted.from_environment_to_stable_baseline(state_around_obj_list)
 
-    def _create_herbivore(self) -> HerbivoreNoBrain:
+    def _create_herbivore(self) -> HerbivoreBase:
         return self.setup.living_object_class(
             name=self.setup.living_object_name,
             health=self.setup.living_object_initial_health,
+            # env=self.environment,
         )
