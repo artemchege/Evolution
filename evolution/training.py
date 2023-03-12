@@ -1,5 +1,5 @@
 from enum import EnumMeta
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import gym
 import numpy as np
@@ -10,8 +10,6 @@ from domain.environment import EnvironmentTrainRegime
 from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, TrainingSetup
 from visualization.visualize import Visualizer
 
-# TODO: переименовать классы в GymEnv
-
 
 class HerbivoreGym(gym.Env):
     """ Custom Gym environment that runs training process """
@@ -21,18 +19,15 @@ class HerbivoreGym(gym.Env):
             movement_class: EnumMeta,
             environment: EnvironmentTrainRegime,  # noqa
             setup: TrainingSetup,
+            visualizer=Optional[Visualizer],
     ):
         self.environment: EnvironmentTrainRegime = environment
         self.action_space = Discrete(len(movement_class))
         self.observation_space = MultiDiscrete([3] * 9)
         self.setup: TrainingSetup = setup
-
-        # self.herbivore: HerbivoreBase = self._create_herbivore()
         self.herbivore = None
-        self.visualizer = Visualizer(self.environment)
+        self.visualizer = visualizer  # Visualizer(self.environment)
         self.matrix_converted = MatrixConverter()
-
-        # self.reset()  # ???
 
     def step(self, action: int) -> Tuple[np.ndarray, int, bool, dict]:
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[action]
@@ -52,12 +47,14 @@ class HerbivoreGym(gym.Env):
         return observation, reward, done, {}
 
     def render(self, mode="human"):
-        if mode == 'human':
+        if mode == 'human' and self.visualizer:
             self.visualizer.render_step(self.environment.matrix)
 
     def reset(self) -> np.ndarray:
         self.herbivore: HerbivoreBase = self._create_herbivore()
 
+        # TODO: сделать так чтоб сюда копировалось текущее состояние env с тем же количеством хищников и
+        #  травоядных и еды, тренировать на идентичном окружении
         self.environment.setup_initial_state(
             live_objs=[self.herbivore],
         )
@@ -72,5 +69,4 @@ class HerbivoreGym(gym.Env):
         return self.setup.living_object_class(
             name=self.setup.living_object_name,
             health=self.setup.living_object_initial_health,
-            # env=self.environment,
         )

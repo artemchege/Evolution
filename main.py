@@ -18,18 +18,23 @@ def visualize_trained_model_visualizer_runner():
         width=15,
         height=15,
         replenish_food=True,
-        herbivore_food_amount=30,
+        herbivore_food_amount=50,
         food_nutrition=3,
     )
-    # pray_1 = HerbivoreNoBrain('Mammoth', 10)
-    # pray_2 = HerbivoreNoBrain('Dodo bird', 15)
+    # pray_1 = HerbivoreBase('Mammoth', 10)
+    # pray_2 = HerbivoreBase('Dodo bird', 15)
     # trained_prey = HerbivoreTrained100000('Crow', 10)
-    herb_from_the_beg = HerbivoreTrain(
+    herb_tr_1 = HerbivoreTrain(
         name='Lolka',
-        health=30,
+        health=20,
         env=environment,
     )
-    environment.setup_initial_state(live_objs=[herb_from_the_beg])   # todo: возможно отвественность раннера, который надо создать
+    # herb_tr_2 = HerbivoreTrain(
+    #     name='Kelka',
+    #     health=10,
+    #     env=environment,
+    # )
+    environment.setup_initial_state(live_objs=[herb_tr_1])   # todo: возможно отвественность раннера, который надо создать
     Visualizer(environment).run()
 
 

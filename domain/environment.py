@@ -37,7 +37,6 @@ class Environment(ABC):
             food_nutrition: int,
             replenish_food: bool = True,
             herbivore_food_amount=50,
-            nutrition=3,
     ):
 
         self.width: int = width
@@ -45,7 +44,6 @@ class Environment(ABC):
         self.replenish_food: bool = replenish_food
         self.food_nutrition: int = food_nutrition
         self.herbivore_food_amount = herbivore_food_amount
-        self.nutrition = nutrition
         self.matrix: List[List] = self._create_blank_matrix()
 
     @property
@@ -58,6 +56,7 @@ class Environment(ABC):
 
     @property
     def game_over(self) -> bool:
+        # TODO: оптимизировать, хранить кеш сущностей в списке или словаре
         for y, row in enumerate(self.matrix):
             for x, entity in enumerate(row):
                 if isinstance(entity, AliveEntity):
@@ -71,13 +70,14 @@ class Environment(ABC):
             self._set_object_randomly(live_obj)
 
         for _ in range(self.herbivore_food_amount):
-            self._set_object_randomly(HerbivoreFood(nutrition=self.nutrition))
+            self._set_object_randomly(HerbivoreFood(nutrition=self.food_nutrition))
 
     def step_living_regime(self) -> Tuple[List[List], bool]:
         next_state: List[List] = self._get_next_state()
         return next_state, self.game_over
 
     def get_living_object_observation(self, living_obj: AliveEntity) -> List[List]:
+        # TODO: возможно оптимизировать, хранить кеш сущностей в словаре и их координаты, забирать все оттуда
         living_object_coordinates: Optional[Coordinates] = self._get_object_coordinates(living_obj)
         return self._get_observation(living_object_coordinates)
 
@@ -170,6 +170,19 @@ class Environment(ABC):
                 self._respawn_object(random_coordinates, obj)
                 in_process = False
 
+    def _set_obj_near(self, near: Coordinates, obj: Any) -> None:
+        coordinates_around: List[Coordinates] = [
+            Coordinates(near.x + x, near.y + y) for y in range(-1, 2) for x in range(-1, 2)
+        ]
+
+        for coordinate in coordinates_around:
+            if self._is_empty_coordinates(coordinate):
+                self._respawn_object(coordinate, obj)
+                return
+
+        self._set_object_randomly(obj)
+        logger.warning('Cannot respawn near to the parent, respawning randomly')
+
     def __repr__(self):
         return f'Matrix {self.width}x{self.height}'
 
@@ -227,6 +240,10 @@ class EnvironmentLiveRegime(Environment):
 
                     if entity in moved_entity_cash:
                         continue
+
+                    if child := entity.give_birth():
+                        self._set_obj_near(near=Coordinates(x, y), obj=child)
+                        moved_entity_cash.append(child)
 
                     observation: List[List] = self._get_observation(Coordinates(x, y))
                     movement: Movement = entity.get_move(observation=observation)  # ask each entity about next move

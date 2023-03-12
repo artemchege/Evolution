@@ -15,7 +15,7 @@ class Visualizer:
 
         self.window_width = 800
         self.window_height = 800
-        self.FPS = 30
+        self.FPS = 1
         self.window = pygame.display.set_mode((self.window_width, self.window_height))
         self.env: Environment = env
 
