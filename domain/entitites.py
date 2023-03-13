@@ -1,18 +1,14 @@
-import multiprocessing
 import os
-import copy
-from multiprocessing import Process
 from abc import ABC, abstractmethod
 import random
 from typing import List, Protocol, Tuple, Optional
 
 import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
 
 from contrib.utils import logger
 
-from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, TrainingSetup
+from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, Setup, HerbivoreSetup
 
 
 class InvalidEntityState(Exception):
@@ -94,18 +90,10 @@ class HerbivoreBase(AliveEntity):
         logger.debug(f'{self.name} ate! New health: {self.health}')
 
     def give_birth(self) -> Optional['AliveEntity']:
-        # TODO: параметризировать, сохранять в родителе init health и сделать его чуток рамндомным +- треть от init
-        if self.health > 15:
-            child = self.__class__(
-                name=f'Child-{random.randint(1,1000)}',
-                health=10,
-            )
-            child.brain = self.brain
-            self.decrease_health(10)
-            return child
+        pass
 
     def __repr__(self):
-        return f'Pray {self.name}, health: {self.health}'
+        return f'{self.name}, health: {self.health}'
 
 
 class HerbivoreTrained100000(HerbivoreBase):
@@ -117,6 +105,16 @@ class HerbivoreTrained100000(HerbivoreBase):
         self.brain = PPO.load(
             os.path.join('Training', 'saved_models', 'PPO_model_herbivore_100000_8x8_food50_5')
         )
+
+    def give_birth(self) -> Optional['AliveEntity']:
+        if self.health > 15:
+            child = self.__class__(
+                name=f'Child-{random.randint(1,1000)}',
+                health=10,
+            )
+            child.brain = self.brain
+            self.decrease_health(10)
+            return child
 
     def get_move(self, observation: List[List]) -> Movement:
         self.decrease_health(1)
@@ -136,20 +134,24 @@ class HerbivoreTrain(HerbivoreBase):
     # TODO: рефакторинг импортов
 
     from domain.environment import Environment
-    from evolution.training import HerbivoreGym
+    from evolution.training import HerbivoreTrainer
 
-    def __init__(self, env: Environment, *args, **kwargs):
-        from evolution.training import HerbivoreGym
+    def __init__(
+            self, environment: Environment, birth_after: int, learn_rate_step: int, learn_n_steps: int, *args, **kwargs
+    ):
+        from evolution.training import HerbivoreTrainer
 
         super().__init__(*args, **kwargs)
-        self.env = env
 
-        gym: HerbivoreGym = self._get_gym()
+        self.environment = environment
+        self.birth_after = birth_after
+        self.learn_rate_step = learn_rate_step
+        self.learn_n_steps = learn_n_steps
 
-        # gyms_fns = [lambda: self._get_gym() for _ in range(2)]
-        # gym = DummyVecEnv(gyms_fns)
-
-        self.brain = PPO("MlpPolicy", gym, verbose=1, tensorboard_log=None, n_steps=1000)
+        trainer: HerbivoreTrainer = self._get_trainer()
+        self.brain = PPO(
+            "MlpPolicy", trainer, verbose=1, tensorboard_log=None, n_steps=self.learn_n_steps
+        )
 
     def get_move(self, observation: List[List]) -> Movement:
         self.decrease_health(1)
@@ -160,50 +162,46 @@ class HerbivoreTrain(HerbivoreBase):
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
         logger.debug(f'{self} moves {movement} health {self.health}')
 
-        if random.randint(0, 4) == 0:
+        if random.randint(0, self.learn_rate_step) == 0:
+            # self.brain.set_env(self._get_trainer())  # TODO: переинит тренера когда объединю окружения
             self.brain.learn(total_timesteps=1)
-            # p = multiprocessing.Process(target=self.brain.learn, args=(1,))
-            # p.start()
+            logger.info(f"{self.name} start learning")
 
         return movement
 
     def give_birth(self) -> Optional['AliveEntity']:
-        # TODO: параметризировать, сохранять в родителе init health и сделать его чуток рамндомным +- треть от init
-        if self.health > 15:
+        if self.health > self.birth_after:
             child = self.__class__(
                 name=f'Child-{random.randint(1, 1000)}',
-                health=10,
-                env=self.env,
+                health=self.environment.setup.herbivore.herbivore_initial_health,
+                environment=self.environment,
+                learn_rate_step=self.learn_rate_step,
+                birth_after=self.birth_after,
+                learn_n_steps=self.environment.setup.herbivore.learn_n_steps,
             )
             child.brain.set_parameters(self.brain.get_parameters())  # TODO: проверить работает или нет
             self.decrease_health(10)
             return child
 
-    def _get_training_setup(self) -> TrainingSetup:
-        # TODO: рефакторинг констант и сетапа, сделать так чтоб все числа вынести в одно место, возможно запутался
-        return TrainingSetup(
-            herbivore_food_amount=self.env.herbivore_food_amount,
-            herbivore_food_nutrition=self.env.food_nutrition,
-            replenish_food=self.env.replenish_food,
-            living_object_name='Mammoth',
-            living_object_class=HerbivoreBase,
-            living_object_initial_health=10,
-            live_length=5000,
+    def _get_trainer(self) -> HerbivoreTrainer:
+        from domain.environment import EnvironmentTrainRegime
+        from evolution.training import HerbivoreTrainer
+
+        setup = Setup(
+            window=self.environment.setup.window,
+            food=self.environment.setup.food,
+            herbivore=HerbivoreSetup(
+                herbivores_amount=1,
+                herbivore_class=HerbivoreBase,
+                herbivore_initial_health=self.environment.setup.herbivore.herbivore_initial_health,
+            ),
+            train=self.environment.setup.train,
         )
 
-    def _get_gym(self) -> HerbivoreGym:
-        from domain.environment import EnvironmentTrainRegime
-        from evolution.training import HerbivoreGym
-
-        setup: TrainingSetup = self._get_training_setup()
-        return HerbivoreGym(
+        return HerbivoreTrainer(
             movement_class=Movement,
             environment=EnvironmentTrainRegime(
-                width=self.env.width,
-                height=self.env.height,
-                replenish_food=setup.replenish_food,
-                food_nutrition=setup.herbivore_food_nutrition,
+                setup=setup,
             ),
             setup=setup,
         )
-

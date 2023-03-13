@@ -2,7 +2,6 @@ from typing import List
 
 import pygame
 
-from contrib.utils import logger
 from domain.entitites import AliveEntity
 from domain.environment import Environment
 from domain.objects import Coordinates, HerbivoreFood
@@ -34,23 +33,6 @@ class Visualizer:
         self._render(current_global_env_state)
         pygame.display.update()
         self.clock.tick(self.FPS)
-
-    def run(self):
-        """ For standalone usage without stable baseline3 and Gym """
-
-        # TODO: возможно не отвественность визалайзера, быть может создать раннер отдельно и явно
-
-        run = True
-        while run:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    run = False
-
-            state_to_render, _ = self.env.step_living_regime()
-            self.render_step(state_to_render)
-
-        pygame.quit()
-        logger.debug('Game was closed')
 
     def _create_blank_space(self):
         self.window.fill(GREY_DARK)

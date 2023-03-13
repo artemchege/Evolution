@@ -7,24 +7,24 @@ from gym.spaces import Discrete, MultiDiscrete
 
 from domain.entitites import HerbivoreBase, MatrixConverter
 from domain.environment import EnvironmentTrainRegime
-from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, TrainingSetup
+from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, Setup
 from visualization.visualize import Visualizer
 
 
-class HerbivoreGym(gym.Env):
+class HerbivoreTrainer(gym.Env):
     """ Custom Gym environment that runs training process """
 
     def __init__(
             self,
             movement_class: EnumMeta,
             environment: EnvironmentTrainRegime,  # noqa
-            setup: TrainingSetup,
-            visualizer=Optional[Visualizer],
+            setup: Setup,
+            visualizer: Optional[Visualizer] = None,
     ):
         self.environment: EnvironmentTrainRegime = environment
         self.action_space = Discrete(len(movement_class))
         self.observation_space = MultiDiscrete([3] * 9)
-        self.setup: TrainingSetup = setup
+        self.setup: Setup = setup
         self.herbivore = None
         self.visualizer = visualizer  # Visualizer(self.environment)
         self.matrix_converted = MatrixConverter()
@@ -37,7 +37,9 @@ class HerbivoreGym(gym.Env):
         _, herbivore_died = self.environment.step_living_regime()
         current_health: int = self.herbivore.health
         reward: int = 1 if current_health > previous_health else 0
-        done: bool = True if herbivore_died or self.herbivore.lived_for >= self.setup.live_length else False
+        done: bool = (
+            True if herbivore_died or self.herbivore.lived_for >= self.setup.train.max_live_training_length else False
+        )
 
         if not done:
             observation: np.ndarray = self._get_herbivore_observation()
@@ -52,12 +54,14 @@ class HerbivoreGym(gym.Env):
 
     def reset(self) -> np.ndarray:
         self.herbivore: HerbivoreBase = self._create_herbivore()
+        self.environment.setup_herbivores([self.herbivore])
 
         # TODO: сделать так чтоб сюда копировалось текущее состояние env с тем же количеством хищников и
-        #  травоядных и еды, тренировать на идентичном окружении
-        self.environment.setup_initial_state(
-            live_objs=[self.herbivore],
-        )
+        #  травоядных и еды, тренировать на идентичном окружении, требуется более глубокая доработка с объединением
+        #  enviromnets Live/Training в одно, чтоб когда мы тренировали сущность, то она тренировалась с заданным
+        #  количеством хищников и травоядных, причем эти хищники и травоядные отвечали за свои действия сами, то есть
+        #  Live режим в train режиме
+        self.environment.setup_initial_state()
 
         return self._get_herbivore_observation()
 
@@ -66,7 +70,7 @@ class HerbivoreGym(gym.Env):
         return self.matrix_converted.from_environment_to_stable_baseline(state_around_obj_list)
 
     def _create_herbivore(self) -> HerbivoreBase:
-        return self.setup.living_object_class(
-            name=self.setup.living_object_name,
-            health=self.setup.living_object_initial_health,
+        return self.setup.train.herbivore_trainer_class(
+            name="Background trainer entity",
+            health=self.setup.herbivore.herbivore_initial_health,
         )

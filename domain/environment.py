@@ -3,7 +3,7 @@ from abc import abstractmethod, ABC
 from typing import Optional, List, Any, Tuple
 
 from domain.entitites import AliveEntity
-from domain.objects import Movement, Coordinates, HerbivoreFood
+from domain.objects import Movement, Coordinates, HerbivoreFood, Setup
 from contrib.utils import logger
 
 
@@ -30,21 +30,16 @@ class SetupEnvironmentError(EnvironmentException):
 class Environment(ABC):
     """ Environment that represent world around living objects and key rules """
 
-    def __init__(
-            self,
-            width: int,
-            height: int,
-            food_nutrition: int,
-            replenish_food: bool = True,
-            herbivore_food_amount=50,
-    ):
+    def __init__(self, setup: Setup):
+        self.setup = setup
 
-        self.width: int = width
-        self.height: int = height
-        self.replenish_food: bool = replenish_food
-        self.food_nutrition: int = food_nutrition
-        self.herbivore_food_amount = herbivore_food_amount
+        self.width: int = setup.window.width
+        self.height: int = setup.window.height
+        self.replenish_food: bool = setup.food.replenish_food
+        self.food_nutrition: int = setup.food.herbivore_food_nutrition
+        self.herbivore_food_amount = setup.food.herbivore_food_amount
         self.matrix: List[List] = self._create_blank_matrix()
+        self.herbivores: List[AliveEntity] = []
 
     @property
     def has_space_left(self) -> bool:
@@ -63,11 +58,17 @@ class Environment(ABC):
                     return False
         return True
 
-    def setup_initial_state(self, live_objs: List[AliveEntity]):
+    def setup_herbivores(self, herbivores: List[AliveEntity]) -> None:
+        self.herbivores = herbivores
+
+    def setup_initial_state(self) -> None:
         self.matrix = self._create_blank_matrix()
 
-        for live_obj in live_objs:
-            self._set_object_randomly(live_obj)
+        if len(self.herbivores) < 1:
+            raise SetupEnvironmentError("No herbivores were set")
+
+        for herbivore in self.herbivores:
+            self._set_object_randomly(herbivore)
 
         for _ in range(self.herbivore_food_amount):
             self._set_object_randomly(HerbivoreFood(nutrition=self.food_nutrition))
@@ -184,7 +185,7 @@ class Environment(ABC):
         logger.warning('Cannot respawn near to the parent, respawning randomly')
 
     def __repr__(self):
-        return f'Matrix {self.width}x{self.height}'
+        return f'Matrix {self.width}x{self.height} {id(self)}'
 
 
 class EnvironmentTrainRegime(Environment):
