@@ -47,19 +47,19 @@ def go_runner():
     Runner(
         setup=Setup(
             window=WindowSetup(
-                width=32,
-                height=32,
+                width=16,
+                height=16,
             ),
             food=FoodSetup(
-                herbivore_food_amount=200,
+                herbivore_food_amount=30,
                 herbivore_food_nutrition=3,
                 replenish_food=True,
             ),
             herbivore=HerbivoreSetup(
-                herbivores_amount=5,
+                herbivores_amount=1,
                 herbivore_class=HerbivoreTrain,
                 herbivore_initial_health=20,
-                birth_after=25,
+                birth_after=None,
                 learn_frequency=2,
                 learn_n_steps=512,
             ),

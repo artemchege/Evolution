@@ -57,7 +57,7 @@ class HerbivoreSetup:
     herbivores_amount: int
     herbivore_class: Callable  # HerbivoreTrain, cannot typehint due to import circle
     herbivore_initial_health: int
-    birth_after: int = 15
+    birth_after: Optional[int] = None  # If reproduction is available, if yes, after which amount of heath
     learn_frequency: int = 4  # Randomly after this number of steps
     learn_n_steps: int = 128  # Rollout capacity
 

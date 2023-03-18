@@ -242,9 +242,10 @@ class EnvironmentLiveRegime(Environment):
                     if entity in moved_entity_cash:
                         continue
 
-                    if child := entity.give_birth():
-                        self._set_obj_near(near=Coordinates(x, y), obj=child)
-                        moved_entity_cash.append(child)
+                    if self.setup.herbivore.birth_after:
+                        if child := entity.give_birth():
+                            self._set_obj_near(near=Coordinates(x, y), obj=child)
+                            moved_entity_cash.append(child)
 
                     observation: List[List] = self._get_observation(Coordinates(x, y))
                     movement: Movement = entity.get_move(observation=observation)  # ask each entity about next move
