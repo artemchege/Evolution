@@ -19,13 +19,33 @@ class MatrixConverter:
 
     @staticmethod
     def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
-        # TODO: оптимизировать и сделать все за один цикл
+        # TODO: можно удалять
 
         replace_zeroes_to_ones = [[1 if x == 0 else x for x in row] for row in matrix]
         replace_none_to_zeroes = [[0 if x is None or isinstance(x, HerbivoreBase) else x for x in row] for row in
                                   replace_zeroes_to_ones]
         replace_food_to_two = [[2 if isinstance(x, HerbivoreFood) else x for x in row] for row in replace_none_to_zeroes]
         return np.array(replace_food_to_two).ravel()
+
+
+class MatrixConverterV2:
+
+    @staticmethod
+    def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
+        result = []
+
+        for row in matrix:
+            new_row = []
+            for element in row:
+                if element == 0:
+                    new_row.append(1)
+                elif element is None or isinstance(element, HerbivoreBase):
+                    new_row.append(0)
+                elif isinstance(element, HerbivoreFood):
+                    new_row.append(2)
+            result.append(new_row)
+
+        return np.array(result).ravel()
 
 
 class Brain(Protocol):
@@ -38,12 +58,20 @@ class Brain(Protocol):
         pass
 
 
-class NoBrain:
-    def learn(self, *args, **kwargs):
+class ControlledBrain:
+    """ Brain that return next movement that supposed to be set outside, used with gym Trainer to train models """
+
+    def __init__(self):
+        self.next_movement = []
+
+    def set_next_movement(self, movement: Movement):
+        self.next_movement.append(movement)
+
+    def learn(self, *args, **kwargs) -> None:
         pass
 
-    def predict(self, *args, **kwargs) -> Tuple:  # noqa
-        return random.choice(list(Movement)), None
+    def predict(self, *args, **kwargs) -> Tuple:
+        return self.next_movement.pop(), None
 
 
 class AliveEntity(ABC):
@@ -52,7 +80,7 @@ class AliveEntity(ABC):
         self.name = name
         self.health = health
         self.lived_for = 0
-        self.brain: Brain = NoBrain()
+        self.brain: Brain = ControlledBrain()
         self.matrix_converted = MatrixConverter()
 
     def get_move(self, observation: List[List]) -> Movement:
@@ -184,7 +212,7 @@ class HerbivoreTrain(HerbivoreBase):
             return child
 
     def _get_trainer(self) -> HerbivoreTrainer:
-        from domain.environment import EnvironmentTrainRegime
+        from domain.environment import Environment
         from evolution.training import HerbivoreTrainer
 
         setup = Setup(
@@ -200,7 +228,7 @@ class HerbivoreTrain(HerbivoreBase):
 
         return HerbivoreTrainer(
             movement_class=Movement,
-            environment=EnvironmentTrainRegime(
+            environment=Environment(
                 setup=setup,
             ),
             setup=setup,

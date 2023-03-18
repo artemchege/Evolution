@@ -5,8 +5,8 @@ import gym
 import numpy as np
 from gym.spaces import Discrete, MultiDiscrete
 
-from domain.entitites import HerbivoreBase, MatrixConverter
-from domain.environment import EnvironmentTrainRegime
+from domain.entitites import HerbivoreBase, MatrixConverter, MatrixConverterV2
+from domain.environment import Environment
 from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, Setup
 from visualization.visualize import Visualizer
 
@@ -17,23 +17,26 @@ class HerbivoreTrainer(gym.Env):
     def __init__(
             self,
             movement_class: EnumMeta,
-            environment: EnvironmentTrainRegime,  # noqa
+            environment: Environment,
             setup: Setup,
             visualizer: Optional[Visualizer] = None,
     ):
-        self.environment: EnvironmentTrainRegime = environment
+        self.environment: Environment = environment
         self.action_space = Discrete(len(movement_class))
         self.observation_space = MultiDiscrete([3] * 9)
         self.setup: Setup = setup
         self.herbivore = None
         self.visualizer = visualizer  # Visualizer(self.environment)
-        self.matrix_converted = MatrixConverter()
+        # self.matrix_converted = MatrixConverter()
+        self.matrix_converted = MatrixConverterV2()
+
+        # TODO: проверить что травоядное с брейном нужнго типа
 
     def step(self, action: int) -> Tuple[np.ndarray, int, bool, dict]:
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[action]
 
         previous_health: int = self.herbivore.health
-        self.environment.set_next_movement(movement)
+        self.herbivore.brain.set_next_movement(movement)
         _, herbivore_died = self.environment.step_living_regime()
         current_health: int = self.herbivore.health
         reward: int = 1 if current_health > previous_health else 0

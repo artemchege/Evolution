@@ -27,7 +27,7 @@ class SetupEnvironmentError(EnvironmentException):
     """ No space left in environment """
 
 
-class Environment(ABC):
+class Environment:
     """ Environment that represent world around living objects and key rules """
 
     def __init__(self, setup: Setup):
@@ -82,9 +82,32 @@ class Environment(ABC):
         living_object_coordinates: Optional[Coordinates] = self._get_object_coordinates(living_obj)
         return self._get_observation(living_object_coordinates)
 
-    @abstractmethod
     def _get_next_state(self) -> List[List]:
-        pass
+        moved_entity_cash: List[AliveEntity] = []
+
+        for y, row in enumerate(self.matrix):
+            for x, entity in enumerate(row):
+                if isinstance(entity, AliveEntity):
+
+                    if entity.health == 0:
+                        self._erase_object(Coordinates(x, y))
+                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
+                        continue
+
+                    if entity in moved_entity_cash:
+                        continue
+
+                    if self.setup.herbivore.birth_after:
+                        if child := entity.give_birth():
+                            self._set_obj_near(near=Coordinates(x, y), obj=child)
+                            moved_entity_cash.append(child)
+
+                    observation: List[List] = self._get_observation(Coordinates(x, y))
+                    movement: Movement = entity.get_move(observation=observation)  # ask each entity about next move
+                    self._make_move(movement, entity)
+                    moved_entity_cash.append(entity)
+
+        return self.matrix
 
     def _create_blank_matrix(self):
         return [
@@ -186,70 +209,3 @@ class Environment(ABC):
 
     def __repr__(self):
         return f'Matrix {self.width}x{self.height} {id(self)}'
-
-
-class EnvironmentTrainRegime(Environment):
-    """ Must be used in gym.Env environment runners to train models. Key difference is that in this subclass an
-    action of a living object is set from outside (from training model) in process of RL training. """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.movement_from_outside: Optional[Movement] = None
-
-    def set_next_movement(self, movement: Movement):
-        self.movement_from_outside = movement
-
-    def _get_next_state(self) -> List[List]:
-        moved_entity_cash: List[AliveEntity] = []
-
-        for y, row in enumerate(self.matrix):
-            for x, entity in enumerate(row):
-                if isinstance(entity, AliveEntity):
-
-                    if entity.health == 0:
-                        self._erase_object(Coordinates(x, y))
-                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
-                        continue
-
-                    if entity in moved_entity_cash:
-                        continue
-
-                    entity.get_move(observation=[[]])  # does not matter, movement is set in set_movement_from_outside
-                    movement: Movement = self.movement_from_outside
-
-                    self._make_move(movement, entity)
-                    moved_entity_cash.append(entity)
-
-        return self.matrix
-
-
-class EnvironmentLiveRegime(Environment):
-    """ Must be used with already trained entities without gym.Env just to look at how objects behaves. Key difference
-    is that in this subclass each living object id asked about its next movement """
-
-    def _get_next_state(self) -> List[List]:
-        moved_entity_cash: List[AliveEntity] = []
-
-        for y, row in enumerate(self.matrix):
-            for x, entity in enumerate(row):
-                if isinstance(entity, AliveEntity):
-
-                    if entity.health == 0:
-                        self._erase_object(Coordinates(x, y))
-                        logger.debug(f'Object {entity} died! Lived for: {entity.lived_for}')
-                        continue
-
-                    if entity in moved_entity_cash:
-                        continue
-
-                    if self.setup.herbivore.birth_after:
-                        if child := entity.give_birth():
-                            self._set_obj_near(near=Coordinates(x, y), obj=child)
-                            moved_entity_cash.append(child)
-
-                    observation: List[List] = self._get_observation(Coordinates(x, y))
-                    movement: Movement = entity.get_move(observation=observation)  # ask each entity about next move
-                    self._make_move(movement, entity)
-                    moved_entity_cash.append(entity)
-
-        return self.matrix

@@ -1,10 +1,13 @@
 import random
+import timeit
 import pygame
+from stable_baselines3 import PPO
 
 from contrib.utils import logger
 from domain.entitites import HerbivoreBase, HerbivoreTrain
-from domain.environment import EnvironmentLiveRegime
-from domain.objects import Setup, WindowSetup, FoodSetup, HerbivoreSetup, HerbivoreTrainSetup
+from domain.environment import Environment
+from domain.objects import Setup, WindowSetup, FoodSetup, HerbivoreSetup, HerbivoreTrainSetup, Movement
+from evolution.training import HerbivoreTrainer
 from visualization.visualize import Visualizer
 
 
@@ -15,7 +18,7 @@ class Runner:
     ):
         self.setup: Setup = setup
 
-        self.environment = EnvironmentLiveRegime(
+        self.environment = Environment(
             setup=self.setup,
         )
         self.visualizer: Visualizer = Visualizer(self.environment)
@@ -51,12 +54,12 @@ def go_runner():
                 height=16,
             ),
             food=FoodSetup(
-                herbivore_food_amount=30,
+                herbivore_food_amount=50,
                 herbivore_food_nutrition=3,
                 replenish_food=True,
             ),
             herbivore=HerbivoreSetup(
-                herbivores_amount=1,
+                herbivores_amount=5,
                 herbivore_class=HerbivoreTrain,
                 herbivore_initial_health=20,
                 birth_after=None,
@@ -71,8 +74,55 @@ def go_runner():
     ).run()
 
 
+def create_trained_model():
+    setup = Setup(
+        window=WindowSetup(
+            width=16,
+            height=16,
+        ),
+        food=FoodSetup(
+            herbivore_food_amount=30,
+            herbivore_food_nutrition=3,
+            replenish_food=True,
+        ),
+        herbivore=HerbivoreSetup(
+            herbivores_amount=1,
+            herbivore_class=HerbivoreBase,
+            herbivore_initial_health=20,
+            birth_after=None,
+            learn_frequency=2,
+            learn_n_steps=512,
+        ),
+        train=HerbivoreTrainSetup(
+            herbivore_trainer_class=HerbivoreBase,
+            max_live_training_length=5000,
+        )
+    )
+
+    trainer = HerbivoreTrainer(
+        movement_class=Movement,
+        environment=Environment(
+            setup=setup,
+        ),
+        setup=setup,
+        visualizer=None,
+    )
+
+    model = PPO("MlpPolicy", trainer, verbose=1, tensorboard_log=None)
+    model.learn(total_timesteps=100_000)
+    return model
+
+
+def benchmark_efficiency():
+    num = 500
+    execution_time = timeit.timeit(create_trained_model, number=num)
+    print("Время выполнения функции (AVG): ", execution_time/num)
+
+
 def main():
     go_runner()
+    # benchmark_efficiency()
+    # create_trained_model()
 
 
 if __name__ == '__main__':
