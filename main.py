@@ -17,7 +17,6 @@ class Runner:
             setup: Setup,
     ):
         self.setup: Setup = setup
-
         self.environment = Environment(
             setup=self.setup,
         )
@@ -29,13 +28,9 @@ class Runner:
                 environment=self.environment,
                 health=self.setup.herbivore.herbivore_initial_health,
                 name=f"Initial herbivore #{random.randint(1, 10000)}",
-                learn_rate_step=self.setup.herbivore.learn_frequency,
-                learn_n_steps=self.setup.herbivore.learn_n_steps,
-                birth_after=self.setup.herbivore.birth_after,
             ) for _ in range(self.setup.herbivore.herbivores_amount)
         ]
-        self.environment.setup_herbivores(herbivores)
-        self.environment.setup_initial_state()
+        self.environment.setup_initial_state(herbivores=herbivores)
 
         run = True
         while run:
@@ -109,7 +104,7 @@ def create_trained_model():
     )
 
     model = PPO("MlpPolicy", trainer, verbose=1, tensorboard_log=None)
-    model.learn(total_timesteps=100_000)
+    model.learn(total_timesteps=100)
     return model
 
 
@@ -119,11 +114,7 @@ def benchmark_efficiency():
     print("Время выполнения функции (AVG): ", execution_time/num)
 
 
-def main():
-    go_runner()
-    # benchmark_efficiency()
-    # create_trained_model()
-
-
 if __name__ == '__main__':
-    main()
+    # go_runner()
+    benchmark_efficiency()
+    # create_trained_model()

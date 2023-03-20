@@ -159,22 +159,21 @@ class HerbivoreTrained100000(HerbivoreBase):
 class HerbivoreTrain(HerbivoreBase):
     """ Not trained model that educate itself after each step """
 
-    # TODO: рефакторинг импортов
+    # TODO: рефакторинг импортов + сигнатура ИНИТ с другими сабклассами родителя не совпадают, сделать так чтоб
+    #  енв принимали все
 
     from domain.environment import Environment
     from evolution.training import HerbivoreTrainer
 
-    def __init__(
-            self, environment: Environment, birth_after: int, learn_rate_step: int, learn_n_steps: int, *args, **kwargs
-    ):
+    def __init__(self, environment: Environment, *args, **kwargs):
         from evolution.training import HerbivoreTrainer
 
         super().__init__(*args, **kwargs)
 
         self.environment = environment
-        self.birth_after = birth_after
-        self.learn_rate_step = learn_rate_step
-        self.learn_n_steps = learn_n_steps
+        self.birth_after = self.environment.setup.herbivore.birth_after
+        self.learn_frequency = self.environment.setup.herbivore.learn_frequency
+        self.learn_n_steps = self.environment.setup.herbivore.learn_n_steps
 
         trainer: HerbivoreTrainer = self._get_trainer()
         self.brain = PPO(
@@ -190,7 +189,7 @@ class HerbivoreTrain(HerbivoreBase):
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
         logger.debug(f'{self} moves {movement} health {self.health}')
 
-        if random.randint(0, self.learn_rate_step) == 0:
+        if random.randint(0, self.learn_frequency) == 0:
             # self.brain.set_env(self._get_trainer())  # TODO: переинит тренера когда объединю окружения
             self.brain.learn(total_timesteps=1)
             logger.info(f"{self.name} start learning")
@@ -203,9 +202,6 @@ class HerbivoreTrain(HerbivoreBase):
                 name=f'Child-{random.randint(1, 1000)}',
                 health=self.environment.setup.herbivore.herbivore_initial_health,
                 environment=self.environment,
-                learn_rate_step=self.learn_rate_step,
-                birth_after=self.birth_after,
-                learn_n_steps=self.environment.setup.herbivore.learn_n_steps,
             )
             child.brain.set_parameters(self.brain.get_parameters())  # TODO: проверить работает или нет
             self.decrease_health(10)

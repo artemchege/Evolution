@@ -27,8 +27,8 @@ class HerbivoreTrainer(gym.Env):
         self.setup: Setup = setup
         self.herbivore = None
         self.visualizer = visualizer  # Visualizer(self.environment)
-        # self.matrix_converted = MatrixConverter()
-        self.matrix_converted = MatrixConverterV2()
+        self.matrix_converted = MatrixConverter()
+        # self.matrix_converted = MatrixConverterV2()
 
         # TODO: проверить что травоядное с брейном нужнго типа
 
@@ -57,14 +57,13 @@ class HerbivoreTrainer(gym.Env):
 
     def reset(self) -> np.ndarray:
         self.herbivore: HerbivoreBase = self._create_herbivore()
-        self.environment.setup_herbivores([self.herbivore])
 
         # TODO: сделать так чтоб сюда копировалось текущее состояние env с тем же количеством хищников и
         #  травоядных и еды, тренировать на идентичном окружении, требуется более глубокая доработка с объединением
         #  enviromnets Live/Training в одно, чтоб когда мы тренировали сущность, то она тренировалась с заданным
         #  количеством хищников и травоядных, причем эти хищники и травоядные отвечали за свои действия сами, то есть
         #  Live режим в train режиме
-        self.environment.setup_initial_state()
+        self.environment.setup_initial_state(herbivores=[self.herbivore])
 
         return self._get_herbivore_observation()
 

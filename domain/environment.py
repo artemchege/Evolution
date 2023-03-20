@@ -1,5 +1,4 @@
 import random
-from abc import abstractmethod, ABC
 from typing import Optional, List, Any, Tuple
 
 from domain.entitites import AliveEntity
@@ -58,14 +57,13 @@ class Environment:
                     return False
         return True
 
-    def setup_herbivores(self, herbivores: List[AliveEntity]) -> None:
-        self.herbivores = herbivores
-
-    def setup_initial_state(self) -> None:
+    def setup_initial_state(self, herbivores: List[AliveEntity]) -> None:
         self.matrix = self._create_blank_matrix()
 
-        if len(self.herbivores) < 1:
-            raise SetupEnvironmentError("No herbivores were set")
+        if len(herbivores) < 1:
+            raise SetupEnvironmentError("No herbivores were provided")
+        else:
+            self.herbivores = herbivores
 
         for herbivore in self.herbivores:
             self._set_object_randomly(herbivore)
@@ -103,7 +101,7 @@ class Environment:
                             moved_entity_cash.append(child)
 
                     observation: List[List] = self._get_observation(Coordinates(x, y))
-                    movement: Movement = entity.get_move(observation=observation)  # ask each entity about next move
+                    movement: Movement = entity.get_move(observation=observation)
                     self._make_move(movement, entity)
                     moved_entity_cash.append(entity)
 
@@ -151,7 +149,7 @@ class Environment:
             if self.replenish_food:
                 self._set_object_randomly(HerbivoreFood(self.food_nutrition))
 
-    def _respawn_object(self, where: Coordinates, obj) -> None:
+    def _respawn_object(self, where: Coordinates, obj: Any) -> None:
         if self.matrix[where.y][where.x] == 0:
             self.matrix[where.y][where.x] = obj
             logger.debug(f'Object {obj} was respawned at {where}')
