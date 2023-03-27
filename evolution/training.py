@@ -5,7 +5,7 @@ import gym
 import numpy as np
 from gym.spaces import Discrete, MultiDiscrete
 
-from domain.entitites import HerbivoreBase, MatrixConverter, MatrixConverterV2
+from domain.entitites import HerbivoreBase, MatrixConverterV2
 from domain.environment import Environment
 from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, Setup
 from visualization.visualize import Visualizer
@@ -27,8 +27,7 @@ class HerbivoreTrainer(gym.Env):
         self.setup: Setup = setup
         self.herbivore = None
         self.visualizer = visualizer  # Visualizer(self.environment)
-        self.matrix_converted = MatrixConverter()
-        # self.matrix_converted = MatrixConverterV2()
+        self.matrix_converted = MatrixConverterV2()
 
         # TODO: проверить что травоядное с брейном нужнго типа
 

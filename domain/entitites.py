@@ -1,4 +1,5 @@
 import os
+import uuid
 from abc import ABC, abstractmethod
 import random
 from typing import List, Protocol, Tuple, Optional
@@ -74,14 +75,25 @@ class ControlledBrain:
         return self.next_movement.pop(), None
 
 
+class RandomBrain:
+    """ Brain that returns random movements """
+
+    def learn(self, *args, **kwargs) -> None:
+        pass
+
+    def predict(self, *args, **kwargs) -> Tuple:
+        return random.choice(list(Movement)), None
+
+
 class AliveEntity(ABC):
 
-    def __init__(self, name: str, health: int):
+    def __init__(self, name: str, health: int, brain: Brain = ControlledBrain()):
         self.name = name
         self.health = health
         self.lived_for = 0
-        self.brain: Brain = ControlledBrain()
+        self.brain: Brain = brain
         self.matrix_converted = MatrixConverter()
+        self.uid = uuid.uuid4()
 
     def get_move(self, observation: List[List]) -> Movement:
         self.health -= 1
@@ -108,6 +120,14 @@ class AliveEntity(ABC):
     @abstractmethod
     def give_birth(self) -> Optional['AliveEntity']:
         pass
+
+    def __hash__(self):
+        return hash(self.uid)
+
+    def __eq__(self, other):
+        if isinstance(other, AliveEntity):
+            return self.uid == other.uid
+        return NotImplemented
 
 
 class HerbivoreBase(AliveEntity):

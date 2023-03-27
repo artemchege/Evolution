@@ -64,12 +64,7 @@ class TestEnvironment:
         assert result is True
 
     def test_game_over_one_alive_entity_left(self, basic_herbivore, basic_env):
-        basic_env.matrix = [[0, basic_herbivore, 1], [1, 1, 1], [1, 1, 1]]
-        result = basic_env.game_over
-        assert result is False
-
-    def test_game_over_multiple_alive_entity_left(self, basic_herbivore, basic_env):
-        basic_env.matrix = [[0, 1, 1], [1, 1, basic_herbivore], [1, 1, basic_herbivore]]
+        basic_env.alive_entities_coords[basic_herbivore] = Coordinates(1, 1)
         result = basic_env.game_over
         assert result is False
 
@@ -99,29 +94,89 @@ class TestEnvironment:
                 assert matrix[i][j] == 0
 
     def test_get_object_coordinates_single_object_of_type(self, basic_env, basic_herbivore):
-        basic_env.matrix[2][3] = basic_herbivore
+        basic_env.alive_entities_coords[basic_herbivore] = Coordinates(3, 2)
         coords: Coordinates = basic_env._get_object_coordinates(basic_herbivore)
         assert coords.x == 3
         assert coords.y == 2
 
     def test_get_object_coordinates_multiple_object_of_type(self, basic_env, basic_herbivore):
-        basic_env.matrix[2][3] = basic_herbivore
-        basic_env.matrix[0][0] = HerbivoreBase(
+        basic_env.alive_entities_coords[basic_herbivore] = Coordinates(3, 2)
+        basic_env.alive_entities_coords[HerbivoreBase(
             name='Test herbivore 2',
             health=10,
-        )
-        basic_env.matrix[3][3] = HerbivoreBase(
+        )] = Coordinates(0, 0)
+        basic_env.alive_entities_coords[HerbivoreBase(
             name='Test herbivore 3',
             health=10,
-        )
+        )] = Coordinates(3, 3)
         coords: Coordinates = basic_env._get_object_coordinates(basic_herbivore)
         assert coords.x == 3
         assert coords.y == 2
 
-    def test_erase_object(self, basic_env, basic_herbivore):
-        basic_env.matrix = [[1, 1, 1], [1, 1, basic_herbivore], [1, 1, 1]]
-        basic_env._erase_object(Coordinates(2, 1))
-        assert basic_env.matrix == [[1, 1, 1], [1, 1, 0], [1, 1, 1]]
+    def test_erase_object_alive(self, basic_env, basic_herbivore):
+        basic_env.matrix = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]
+        basic_env._respawn_object(Coordinates(1, 1), basic_herbivore)
+        basic_env._erase_object(basic_herbivore, Coordinates(1, 1))
+        assert basic_env.matrix == [[1, 1, 1], [1, 0, 1], [1, 1, 1]]
+        assert len(basic_env.alive_entities_coords) == 0
+
+    def test_erase_object_not_alive(self, basic_env):
+        food = HerbivoreFood(nutrition=3)
+        basic_env.matrix = [[1, 1, 1], [1, food, 1], [1, 1, 1]]
+        basic_env._erase_object(food, Coordinates(1, 1))
+        assert basic_env.matrix == [[1, 1, 1], [1, 0, 1], [1, 1, 1]]
+
+    def test_erase_dead_entities_multiple_one_dead_two_alive(self, basic_env):
+        basic_env.matrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        herb_1 = HerbivoreBase(
+            name='Test herbivore 1',
+            health=10,
+        )
+        herb_2 = HerbivoreBase(
+            name='Test herbivore 2',
+            health=0,
+        )
+        herb_3 = HerbivoreBase(
+            name='Test herbivore 3',
+            health=5,
+        )
+
+        basic_env._respawn_object(Coordinates(0, 0), herb_1)
+        basic_env._respawn_object(Coordinates(1, 1), herb_2)
+        basic_env._respawn_object(Coordinates(2, 2), herb_3)
+
+        basic_env._erase_dead_entities()
+
+        assert len(basic_env.alive_entities_coords) == 2
+        assert herb_1 in basic_env.alive_entities_coords
+        assert herb_2 not in basic_env.alive_entities_coords
+        assert herb_3 in basic_env.alive_entities_coords
+
+    def test_erase_dead_entities_multiple_two_dead_on_alive(self, basic_env):
+        basic_env.matrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        herb_1 = HerbivoreBase(
+            name='Test herbivore 1',
+            health=10,
+        )
+        herb_2 = HerbivoreBase(
+            name='Test herbivore 2',
+            health=0,
+        )
+        herb_3 = HerbivoreBase(
+            name='Test herbivore 3',
+            health=-1,
+        )
+
+        basic_env._respawn_object(Coordinates(0, 0), herb_1)
+        basic_env._respawn_object(Coordinates(1, 1), herb_2)
+        basic_env._respawn_object(Coordinates(2, 2), herb_3)
+
+        basic_env._erase_dead_entities()
+
+        assert len(basic_env.alive_entities_coords) == 1
+        assert herb_1 in basic_env.alive_entities_coords
+        assert herb_2 not in basic_env.alive_entities_coords
+        assert herb_3 not in basic_env.alive_entities_coords
 
     def test_is_empty_coordinates(self, basic_env):
         basic_env.matrix = [[1, 1, 1], [1, 1, 0], [1, 1, 1]]
@@ -143,10 +198,11 @@ class TestEnvironment:
         basic_env.matrix = [
             [1, 2, 3, 4, 5],
             [6, 7, 8, 9, 10],
-            [11, 12, basic_herbivore, 14, 15],
+            [11, 12, 0, 14, 15],
             [16, 17, 18, 19, 20],
             [21, 22, 23, 24, 25],
         ]
+        basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
 
         assert basic_env.get_living_object_observation(basic_herbivore) == [
             [7, 8, 9], [12, basic_herbivore, 14], [17, 18, 19]
@@ -208,9 +264,10 @@ class TestEnvironment:
     def test_make_move_up_left(self, basic_env, basic_herbivore, test_case):
         basic_env.matrix = [
             [0, 0, 0],
-            [0, basic_herbivore, 0],
+            [0, 0, 0],
             [0, 0, 0]
         ]
+        basic_env._respawn_object(Coordinates(1, 1), basic_herbivore)
         basic_env._make_move(test_case['movement'], basic_herbivore)
         assert basic_env._get_object_coordinates(basic_herbivore) == test_case['herbivore_coordinates']
         assert (
@@ -220,10 +277,12 @@ class TestEnvironment:
 
     def test_make_move_eat_herbivore_food(self, basic_env, basic_herbivore):
         basic_env.matrix = [
-            [0, HerbivoreFood(3), 0],
-            [0, basic_herbivore, 0],
+            [0, 0, 0],
+            [0, 0, 0],
             [0, 0, 0]
         ]
+        basic_env._respawn_object(Coordinates(1, 0), HerbivoreFood(3))
+        basic_env._respawn_object(Coordinates(1, 1), basic_herbivore)
         basic_env._make_move(Movement.UP, basic_herbivore)
         assert basic_env.matrix == [
             [0, basic_herbivore, 0],
@@ -236,13 +295,12 @@ class TestEnvironment:
         basic_env.matrix = [
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
-            [0, 0, basic_herbivore, 0, 0],
+            [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
         ]
-
+        basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
         basic_herbivore.brain.set_next_movement(Movement.UP)
-
         assert basic_env._get_next_state() == [
             [0, 0, 0, 0, 0],
             [0, 0, basic_herbivore, 0, 0],
@@ -269,12 +327,17 @@ class TestEnvironment:
             health=10,
         )
         basic_env.matrix = [
-            [0, 0, 0, herb_2, 0],
-            [herb_1, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, herb_3],
-            [0, herb_4, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
         ]
+        basic_env._respawn_object(Coordinates(0, 1), herb_1)
+        basic_env._respawn_object(Coordinates(3, 0), herb_2)
+        basic_env._respawn_object(Coordinates(4, 3), herb_3)
+        basic_env._respawn_object(Coordinates(1, 4), herb_4)
+
         herb_1.brain.set_next_movement(Movement.UP)
         herb_2.brain.set_next_movement(Movement.RIGHT)
         herb_3.brain.set_next_movement(Movement.DOWN)
@@ -293,13 +356,12 @@ class TestEnvironment:
         basic_env.matrix = [
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
-            [0, 0, basic_herbivore, 0, 0],
+            [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
         ]
-
+        basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
         basic_herbivore.brain.set_next_movement(Movement.UP)
-
         assert basic_env._get_next_state() == [
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
@@ -344,11 +406,11 @@ class TestEnvironment:
         basic_env.matrix = [
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
-            [0, 0, basic_herbivore, 0, 0],
+            [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
         ]
-
+        basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
         basic_herbivore.health = 100
 
         next_state = basic_env._get_next_state()
