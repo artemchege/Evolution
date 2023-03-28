@@ -2,8 +2,9 @@ import itertools
 
 import pytest
 
-from domain.entitites import AliveEntity, HerbivoreBase, HerbivoreTrain, HerbivoreTrained100000
-from domain.environment import NotVacantPlaceException, Environment
+from domain.entitites import AliveEntity, Herbivore  # , HerbivoreTrain
+from domain.environment import Environment
+from domain.exceptions import NotVacantPlaceException
 from domain.objects import Coordinates, HerbivoreFood, Movement, Setup, WindowSetup, FoodSetup, HerbivoreSetup, \
     HerbivoreTrainSetup
 
@@ -101,11 +102,11 @@ class TestEnvironment:
 
     def test_get_object_coordinates_multiple_object_of_type(self, basic_env, basic_herbivore):
         basic_env.alive_entities_coords[basic_herbivore] = Coordinates(3, 2)
-        basic_env.alive_entities_coords[HerbivoreBase(
+        basic_env.alive_entities_coords[Herbivore(
             name='Test herbivore 2',
             health=10,
         )] = Coordinates(0, 0)
-        basic_env.alive_entities_coords[HerbivoreBase(
+        basic_env.alive_entities_coords[Herbivore(
             name='Test herbivore 3',
             health=10,
         )] = Coordinates(3, 3)
@@ -128,15 +129,15 @@ class TestEnvironment:
 
     def test_erase_dead_entities_multiple_one_dead_two_alive(self, basic_env):
         basic_env.matrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        herb_1 = HerbivoreBase(
+        herb_1 = Herbivore(
             name='Test herbivore 1',
             health=10,
         )
-        herb_2 = HerbivoreBase(
+        herb_2 = Herbivore(
             name='Test herbivore 2',
             health=0,
         )
-        herb_3 = HerbivoreBase(
+        herb_3 = Herbivore(
             name='Test herbivore 3',
             health=5,
         )
@@ -154,15 +155,15 @@ class TestEnvironment:
 
     def test_erase_dead_entities_multiple_two_dead_on_alive(self, basic_env):
         basic_env.matrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        herb_1 = HerbivoreBase(
+        herb_1 = Herbivore(
             name='Test herbivore 1',
             health=10,
         )
-        herb_2 = HerbivoreBase(
+        herb_2 = Herbivore(
             name='Test herbivore 2',
             health=0,
         )
-        herb_3 = HerbivoreBase(
+        herb_3 = Herbivore(
             name='Test herbivore 3',
             health=-1,
         )
@@ -310,19 +311,19 @@ class TestEnvironment:
         ]
 
     def test_get_next_state_multiple_herb(self, basic_env):
-        herb_1 = HerbivoreBase(
+        herb_1 = Herbivore(
             name='Herb 1',
             health=10,
         )
-        herb_2 = HerbivoreBase(
+        herb_2 = Herbivore(
             name='Herb 2',
             health=10,
         )
-        herb_3 = HerbivoreBase(
+        herb_3 = Herbivore(
             name='Herb 3',
             health=10,
         )
-        herb_4 = HerbivoreBase(
+        herb_4 = Herbivore(
             name='Herb 4',
             health=10,
         )
@@ -391,7 +392,7 @@ class TestEnvironment:
                     learn_n_steps=512,
                 ),
                 train=HerbivoreTrainSetup(
-                    herbivore_trainer_class=HerbivoreBase,
+                    herbivore_trainer_class=Herbivore,
                     max_live_training_length=5000,
                 )
             )
@@ -415,7 +416,7 @@ class TestEnvironment:
 
         next_state = basic_env._get_next_state()
         flatten_matrix = list(itertools.chain(*next_state))
-        assert len([x for x in flatten_matrix if isinstance(x, HerbivoreBase)]) == 2
+        assert len([x for x in flatten_matrix if isinstance(x, Herbivore)]) == 2
 
     def test_step_living_regime_game_not_over(self, basic_env, basic_herbivore):
         basic_env.matrix = [

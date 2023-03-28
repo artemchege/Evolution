@@ -1,6 +1,6 @@
 import pytest
 
-from domain.entitites import HerbivoreTrain, HerbivoreBase
+from domain.entitites import HerbivoreTrain, Herbivore
 from domain.environment import Environment
 from domain.objects import Setup, WindowSetup, FoodSetup, HerbivoreSetup, HerbivoreTrainSetup
 
@@ -26,7 +26,7 @@ def basic_setup() -> Setup:
                 learn_n_steps=512,
             ),
             train=HerbivoreTrainSetup(
-                herbivore_trainer_class=HerbivoreBase,
+                herbivore_trainer_class=Herbivore,
                 max_live_training_length=5000,
             )
         )
@@ -39,7 +39,7 @@ def basic_env(basic_setup) -> Environment:
 
 @pytest.fixture
 def basic_herbivore():
-    return HerbivoreBase(
+    return Herbivore(
         name='Test herbivore',
         health=10,
     )

@@ -1,13 +1,17 @@
+import random
 from enum import EnumMeta
 from typing import List, Tuple, Optional
 
 import gym
 import numpy as np
 from gym.spaces import Discrete, MultiDiscrete
+from stable_baselines3 import PPO
 
-from domain.entitites import HerbivoreBase, MatrixConverterV2
+from contrib.utils import logger
+from domain.brain import ControlledBrain
+from domain.entitites import Herbivore, MatrixConverterV2
 from domain.environment import Environment
-from domain.objects import Movement, MOVEMENT_MAPPER_ADJACENT, Setup
+from domain.objects import Setup, HerbivoreTrainSetup
 from visualization.visualize import Visualizer
 
 
@@ -26,16 +30,12 @@ class HerbivoreTrainer(gym.Env):
         self.observation_space = MultiDiscrete([3] * 9)
         self.setup: Setup = setup
         self.herbivore = None
-        self.visualizer = visualizer  # Visualizer(self.environment)
+        self.visualizer = visualizer
         self.matrix_converted = MatrixConverterV2()
 
-        # TODO: проверить что травоядное с брейном нужнго типа
-
     def step(self, action: int) -> Tuple[np.ndarray, int, bool, dict]:
-        movement: Movement = MOVEMENT_MAPPER_ADJACENT[action]
-
         previous_health: int = self.herbivore.health
-        self.herbivore.brain.set_next_movement(movement)
+        self.herbivore.brain.set_next_movement(action)
         _, herbivore_died = self.environment.step_living_regime()
         current_health: int = self.herbivore.health
         reward: int = 1 if current_health > previous_health else 0
@@ -55,13 +55,12 @@ class HerbivoreTrainer(gym.Env):
             self.visualizer.render_step(self.environment.matrix)
 
     def reset(self) -> np.ndarray:
-        self.herbivore: HerbivoreBase = self._create_herbivore()
-
-        # TODO: сделать так чтоб сюда копировалось текущее состояние env с тем же количеством хищников и
-        #  травоядных и еды, тренировать на идентичном окружении, требуется более глубокая доработка с объединением
-        #  enviromnets Live/Training в одно, чтоб когда мы тренировали сущность, то она тренировалась с заданным
-        #  количеством хищников и травоядных, причем эти хищники и травоядные отвечали за свои действия сами, то есть
-        #  Live режим в train режиме
+        self.herbivore = Herbivore(
+            name="Background trainer entity",
+            health=self.setup.birth.health_after_birth,
+            brain=ControlledBrain(),
+            birth_config=None,
+        )
         self.environment.setup_initial_state(herbivores=[self.herbivore])
 
         return self._get_herbivore_observation()
@@ -70,8 +69,30 @@ class HerbivoreTrainer(gym.Env):
         state_around_obj_list: List[List] = self.environment.get_living_object_observation(self.herbivore)
         return self.matrix_converted.from_environment_to_stable_baseline(state_around_obj_list)
 
-    def _create_herbivore(self) -> HerbivoreBase:
-        return self.setup.train.herbivore_trainer_class(
-            name="Background trainer entity",
-            health=self.setup.herbivore.herbivore_initial_health,
+
+class BrainForTraining:
+    def __init__(
+            self, train_setup: HerbivoreTrainSetup, gym_trainer: HerbivoreTrainer
+    ):
+        self.train_setup: HerbivoreTrainSetup = train_setup
+        self.gym_trainer: HerbivoreTrainer = gym_trainer
+        self.model = PPO(
+            "MlpPolicy", self.gym_trainer, verbose=1, tensorboard_log=None, n_steps=self.train_setup.learn_n_steps,
         )
+
+    def predict(self, *args, **kwargs) -> Tuple:
+        if random.randint(0, self.train_setup.learn_frequency) == 0:
+            logger.info(f"Brain {id(self)} started learning")
+            self.learn(total_timesteps=self.train_setup.learn_timesteps)
+        return self.model.predict(*args, **kwargs)
+
+    def learn(self, *args, **kwargs):
+        return self.model.learn(*args, **kwargs)
+
+    def get_copy(self):
+        brain = self.__class__(
+            train_setup=self.train_setup,
+            gym_trainer=self.gym_trainer
+        )
+        brain.model.set_parameters(self.model.get_parameters())
+        return brain

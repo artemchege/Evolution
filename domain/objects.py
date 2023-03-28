@@ -1,6 +1,6 @@
 import enum
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional, Any
 
 
 @dataclass
@@ -55,17 +55,22 @@ class FoodSetup:
 @dataclass
 class HerbivoreSetup:
     herbivores_amount: int
-    herbivore_class: Callable  # HerbivoreTrain, cannot typehint due to import circle
-    herbivore_initial_health: int
-    birth_after: Optional[int] = None  # If reproduction is available, if yes, after which amount of heath
-    learn_frequency: int = 4  # Randomly after this number of steps
-    learn_n_steps: int = 128  # Rollout capacity
+    brain: Any  # Brain
 
 
 @dataclass
 class HerbivoreTrainSetup:
-    herbivore_trainer_class: Callable  # HerbivoreBase, cannot typehint due to import circle
+    learn_frequency: int = 4  # Randomly after this number of steps
+    learn_n_steps: int = 128  # Rollout capacity
+    learn_timesteps: int = 1  # noqa
     max_live_training_length: int = 3000
+
+
+@dataclass
+class BirthSetup:
+    decrease_health_after_birth: int
+    health_after_birth: int
+    birth_after: Optional[int] = None  # If reproduction is available, if yes, after which amount of heath
 
 
 @dataclass
@@ -73,4 +78,5 @@ class Setup:
     window: WindowSetup
     food: FoodSetup
     herbivore: HerbivoreSetup
+    birth: BirthSetup
     train: Optional[HerbivoreTrainSetup]

@@ -1,32 +1,15 @@
-import os
 import uuid
 from abc import ABC, abstractmethod
 import random
-from typing import List, Protocol, Tuple, Optional
+from typing import List, Optional
 
 import numpy as np
-from stable_baselines3 import PPO
 
 from contrib.utils import logger
+from domain.brain import Brain
+from domain.exceptions import InvalidEntityState
 
-from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, Setup, HerbivoreSetup
-
-
-class InvalidEntityState(Exception):
-    """ Invalid state """
-
-
-class MatrixConverter:
-
-    @staticmethod
-    def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
-        # TODO: можно удалять
-
-        replace_zeroes_to_ones = [[1 if x == 0 else x for x in row] for row in matrix]
-        replace_none_to_zeroes = [[0 if x is None or isinstance(x, HerbivoreBase) else x for x in row] for row in
-                                  replace_zeroes_to_ones]
-        replace_food_to_two = [[2 if isinstance(x, HerbivoreFood) else x for x in row] for row in replace_none_to_zeroes]
-        return np.array(replace_food_to_two).ravel()
+from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, BirthSetup
 
 
 class MatrixConverterV2:
@@ -40,7 +23,7 @@ class MatrixConverterV2:
             for element in row:
                 if element == 0:
                     new_row.append(1)
-                elif element is None or isinstance(element, HerbivoreBase):
+                elif element is None or isinstance(element, Herbivore):
                     new_row.append(0)
                 elif isinstance(element, HerbivoreFood):
                     new_row.append(2)
@@ -49,58 +32,30 @@ class MatrixConverterV2:
         return np.array(result).ravel()
 
 
-class Brain(Protocol):
-    """ An interface to brain, stable baseline 3 model have the same pair of methods """
+class MatrixConverterDepr:
 
-    def learn(self, *args, **kwargs) -> None:
-        pass
+    @staticmethod
+    def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
 
-    def predict(self, *args, **kwargs) -> Tuple:
-        pass
-
-
-class ControlledBrain:
-    """ Brain that return next movement that supposed to be set outside, used with gym Trainer to train models """
-
-    def __init__(self):
-        self.next_movement = []
-
-    def set_next_movement(self, movement: Movement):
-        self.next_movement.append(movement)
-
-    def learn(self, *args, **kwargs) -> None:
-        pass
-
-    def predict(self, *args, **kwargs) -> Tuple:
-        return self.next_movement.pop(), None
-
-
-class RandomBrain:
-    """ Brain that returns random movements """
-
-    def learn(self, *args, **kwargs) -> None:
-        pass
-
-    def predict(self, *args, **kwargs) -> Tuple:
-        return random.choice(list(Movement)), None
+        replace_zeroes_to_ones = [[1 if x == 0 else x for x in row] for row in matrix]
+        replace_none_to_zeroes = [[0 if x is None or isinstance(x, Herbivore) else x for x in row] for row in
+                                  replace_zeroes_to_ones]
+        replace_food_to_two = [[2 if isinstance(x, HerbivoreFood) else x for x in row] for row in replace_none_to_zeroes]
+        return np.array(replace_food_to_two).ravel()
 
 
 class AliveEntity(ABC):
 
-    def __init__(self, name: str, health: int, brain: Brain = ControlledBrain()):
+    def __init__(
+            self, name: str, health: int, brain: Brain, birth_config: Optional[BirthSetup] = None
+    ):
         self.name = name
         self.health = health
         self.lived_for = 0
+        self.birth_config: BirthSetup = birth_config
         self.brain: Brain = brain
-        self.matrix_converted = MatrixConverter()
+        self.matrix_converted = MatrixConverterV2()
         self.uid = uuid.uuid4()
-
-    def get_move(self, observation: List[List]) -> Movement:
-        self.health -= 1
-        self.increase_lived_for()
-        next_move, _ = self.brain.predict(observation)
-        logger.debug(f'{self} moves {next_move} health {self.health}')
-        return next_move
 
     def increase_lived_for(self) -> None:
         self.lived_for += 1
@@ -121,6 +76,10 @@ class AliveEntity(ABC):
     def give_birth(self) -> Optional['AliveEntity']:
         pass
 
+    @abstractmethod
+    def get_move(self, observation: List[List]) -> Movement:
+        pass
+
     def __hash__(self):
         return hash(self.uid)
 
@@ -130,7 +89,7 @@ class AliveEntity(ABC):
         return NotImplemented
 
 
-class HerbivoreBase(AliveEntity):
+class Herbivore(AliveEntity):
     """ Not trained herbivore, movements are random """
 
     def eat(self, food: HerbivoreFood) -> None:
@@ -138,114 +97,24 @@ class HerbivoreBase(AliveEntity):
         logger.debug(f'{self.name} ate! New health: {self.health}')
 
     def give_birth(self) -> Optional['AliveEntity']:
-        pass
+        if self.health > self.birth_config.birth_after:
+            child = self.__class__(
+                name=f'Child-{random.randint(1,1000)}',
+                health=self.birth_config.health_after_birth,
+                brain=self.brain.get_copy(),
+                birth_config=self.birth_config,
+            )
+            self.decrease_health(self.birth_config.decrease_health_after_birth)
+            return child
+
+    def get_move(self, observation: List[List]) -> Movement:
+        self.decrease_health(1)
+        self.increase_lived_for()
+        converted_observation = self.matrix_converted.from_environment_to_stable_baseline(observation)
+        action_num, _ = self.brain.predict(converted_observation)
+        movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
+        logger.debug(f'{self} moves {movement} health {self.health}')
+        return movement
 
     def __repr__(self):
         return f'{self.name}, health: {self.health}'
-
-
-class HerbivoreTrained100000(HerbivoreBase):
-    """ Prev trained and saved model, 100_000 cycles, smart enough to live forever """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.brain = PPO.load(
-            os.path.join('Training', 'saved_models', 'PPO_model_herbivore_100000_8x8_food50_5')
-        )
-
-    def give_birth(self) -> Optional['AliveEntity']:
-        if self.health > 15:
-            child = self.__class__(
-                name=f'Child-{random.randint(1,1000)}',
-                health=10,
-            )
-            child.brain = self.brain
-            self.decrease_health(10)
-            return child
-
-    def get_move(self, observation: List[List]) -> Movement:
-        self.decrease_health(1)
-        self.increase_lived_for()
-
-        converted_observation = self.matrix_converted.from_environment_to_stable_baseline(observation)
-        action_num, _ = self.brain.predict(converted_observation)
-        movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
-        logger.debug(f'{self} moves {movement} health {self.health}')
-
-        return movement
-
-
-class HerbivoreTrain(HerbivoreBase):
-    """ Not trained model that educate itself after each step """
-
-    # TODO: рефакторинг импортов + сигнатура ИНИТ с другими сабклассами родителя не совпадают, сделать так чтоб
-    #  енв принимали все
-
-    from domain.environment import Environment
-    from evolution.training import HerbivoreTrainer
-
-    def __init__(self, environment: Environment, *args, **kwargs):
-        from evolution.training import HerbivoreTrainer
-
-        super().__init__(*args, **kwargs)
-
-        self.environment = environment
-        self.birth_after = self.environment.setup.herbivore.birth_after
-        self.learn_frequency = self.environment.setup.herbivore.learn_frequency
-        self.learn_n_steps = self.environment.setup.herbivore.learn_n_steps
-
-        trainer: HerbivoreTrainer = self._get_trainer()
-        self.brain = PPO(
-            "MlpPolicy", trainer, verbose=1, tensorboard_log=None, n_steps=self.learn_n_steps
-        )
-
-    def get_move(self, observation: List[List]) -> Movement:
-        self.decrease_health(1)
-        self.increase_lived_for()
-
-        converted_observation = self.matrix_converted.from_environment_to_stable_baseline(observation)
-        action_num, _ = self.brain.predict(converted_observation)
-        movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
-        logger.debug(f'{self} moves {movement} health {self.health}')
-
-        if random.randint(0, self.learn_frequency) == 0:
-            # self.brain.set_env(self._get_trainer())  # TODO: переинит тренера когда объединю окружения
-            self.brain.learn(total_timesteps=1)
-            logger.info(f"{self.name} start learning")
-
-        return movement
-
-    def give_birth(self) -> Optional['AliveEntity']:
-        if self.health > self.birth_after:
-            child = self.__class__(
-                name=f'Child-{random.randint(1, 1000)}',
-                health=self.environment.setup.herbivore.herbivore_initial_health,
-                environment=self.environment,
-            )
-            child.brain.set_parameters(self.brain.get_parameters())  # TODO: проверить работает или нет
-            self.decrease_health(10)
-            return child
-
-    def _get_trainer(self) -> HerbivoreTrainer:
-        from domain.environment import Environment
-        from evolution.training import HerbivoreTrainer
-
-        setup = Setup(
-            window=self.environment.setup.window,
-            food=self.environment.setup.food,
-            herbivore=HerbivoreSetup(
-                herbivores_amount=1,
-                herbivore_class=HerbivoreBase,
-                herbivore_initial_health=self.environment.setup.herbivore.herbivore_initial_health,
-            ),
-            train=self.environment.setup.train,
-        )
-
-        return HerbivoreTrainer(
-            movement_class=Movement,
-            environment=Environment(
-                setup=setup,
-            ),
-            setup=setup,
-        )

@@ -3,35 +3,17 @@ from copy import copy
 from typing import Optional, List, Any, Tuple, Dict
 
 from domain.entitites import AliveEntity
+from domain.exceptions import NotVacantPlaceException, UnsupportedMovement, ObjectNotExistsInEnvironment, \
+    SetupEnvironmentError
 from domain.objects import Movement, Coordinates, HerbivoreFood, Setup
 from contrib.utils import logger
-
-
-class EnvironmentException(Exception):
-    pass
-
-
-class NotVacantPlaceException(EnvironmentException):
-    """ This place is already occupied """
-
-
-class UnsupportedMovement(EnvironmentException):
-    """ This movement is not supported """
-
-
-class ObjectNotExistsInEnvironment(EnvironmentException):
-    """ Alas """
-
-
-class SetupEnvironmentError(EnvironmentException):
-    """ No space left in environment """
 
 
 class Environment:
     """ Environment that represent world around living objects and key rules """
 
     def __init__(self, setup: Setup):
-        self.setup = setup
+        self.setup: Setup = setup
 
         self.width: int = setup.window.width
         self.height: int = setup.window.height
@@ -83,7 +65,7 @@ class Environment:
             if entity in do_not_move:
                 continue
 
-            if self.setup.herbivore.birth_after:
+            if self.setup.birth.birth_after:
                 if child := entity.give_birth():
                     self._set_obj_near(near=self.alive_entities_coords[entity], obj=child)
                     do_not_move.append(child)
