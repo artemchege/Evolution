@@ -72,7 +72,10 @@ class Visualizer:
                 radius: int = self.cell_width // 2
 
                 if isinstance(element, AliveEntity):
-                    pygame.draw.circle(self.window, BLUE, (cell_center.x, cell_center.y), radius)
+                    entity_circle = pygame.draw.circle(self.window, BLUE, (cell_center.x, cell_center.y), radius)
+                    text = self.font.render(str(element.health), True, BLACK)
+                    text_rect = text.get_rect(center=entity_circle.center)
+                    self.window.blit(text, text_rect)
 
                 if isinstance(element, HerbivoreFood):
                     pygame.draw.circle(self.window, GREEN, (cell_center.x, cell_center.y), radius)
