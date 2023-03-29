@@ -3,7 +3,6 @@ import timeit
 from functools import partial
 
 import pygame
-from stable_baselines3 import PPO
 
 from contrib.utils import logger
 from domain.entitites import Herbivore
@@ -125,46 +124,7 @@ class Runner:
 
 
 def go_runner():
-    Runner(setup=get_setup_for_trained_model()).run()
-
-
-def create_trained_model():
-    setup = Setup(
-        window=WindowSetup(
-            width=16,
-            height=16,
-        ),
-        food=FoodSetup(
-            herbivore_food_amount=30,
-            herbivore_food_nutrition=3,
-            replenish_food=True,
-        ),
-        herbivore=HerbivoreSetup(
-            herbivores_amount=1,
-            herbivore_class=Herbivore,
-            herbivore_initial_health=20,
-            birth_after=None,
-            learn_frequency=2,
-            learn_n_steps=512,
-        ),
-        train=HerbivoreTrainSetup(
-            herbivore_trainer_class=Herbivore,
-            max_live_training_length=5000,
-        )
-    )
-
-    trainer = HerbivoreTrainer(
-        movement_class=Movement,
-        environment=Environment(
-            setup=setup,
-        ),
-        setup=setup,
-        visualizer=None,
-    )
-
-    model = PPO("MlpPolicy", trainer, verbose=1, tensorboard_log=None)
-    model.learn(total_timesteps=100)
-    return model
+    Runner(setup=get_setup_for_real_time_training_visualization()).run()
 
 
 def run_environment_in_range():
@@ -180,15 +140,13 @@ def run_environment_in_range():
         ),
         herbivore=HerbivoreSetup(
             herbivores_amount=5,
-            # herbivore_class=HerbivoreTrain,
-            herbivore_initial_health=20,
-            birth_after=None,
-            learn_frequency=2,
-            learn_n_steps=512,
+            brain=partial(TrainedBrain100000),
         ),
-        train=HerbivoreTrainSetup(
-            herbivore_trainer_class=Herbivore,
-            max_live_training_length=5000,
+        train=HerbivoreTrainSetup(),
+        birth=BirthSetup(
+            decrease_health_after_birth=10,
+            health_after_birth=10,
+            birth_after=None,
         )
     )
 
@@ -204,13 +162,6 @@ def run_environment_in_range():
 
     for _ in range(1000):
         environment.step_living_regime()
-        # print(environment.matrix)
-
-
-def benchmark_efficiency_training():
-    num = 500
-    execution_time = timeit.timeit(create_trained_model, number=num)
-    print("Время выполнения функции (AVG): ", execution_time/num)
 
 
 def benchmark_just_environment():

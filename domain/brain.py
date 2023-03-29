@@ -51,7 +51,7 @@ class RandomBrain:
         pass
 
     def predict(self, *args, **kwargs) -> Tuple:
-        return random.choice(list(Movement)), None
+        return random.randint(0, len(Movement) - 1), None
 
 
 class TrainedBrain100000:
