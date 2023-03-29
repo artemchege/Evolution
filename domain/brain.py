@@ -1,4 +1,4 @@
-import os
+import pathlib
 import random
 from typing import Protocol, Tuple
 
@@ -55,7 +55,10 @@ class RandomBrain:
 
 
 class TrainedBrain100000:
-    model = PPO.load(os.path.join('Training', 'saved_models', 'PPO_model_herbivore_100000_8x8_food50_5'))
+    model = PPO.load(
+        pathlib.Path(__file__).resolve().parent.parent /
+        'Training' / 'saved_models' / 'PPO_model_herbivore_100000_8x8_food50_5'
+    )
 
     @classmethod
     def get_copy(cls):

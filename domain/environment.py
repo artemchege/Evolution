@@ -2,7 +2,7 @@ import random
 from copy import copy
 from typing import Optional, List, Any, Tuple, Dict
 
-from domain.entitites import AliveEntity
+from domain.entitites import AliveEntity, Predator, Herbivore
 from domain.exceptions import NotVacantPlaceException, UnsupportedMovement, ObjectNotExistsInEnvironment, \
     SetupEnvironmentError
 from domain.objects import Movement, Coordinates, HerbivoreFood, Setup
@@ -42,7 +42,7 @@ class Environment:
     def increment_cycle(self):
         self.cycle += 1
 
-    def setup_initial_state(self, herbivores: List[AliveEntity]) -> None:
+    def setup_initial_state(self, herbivores: List[Herbivore], predators: List[Predator]) -> None:
         self.matrix = self._create_blank_matrix()
         self.alive_entities_coords = {}
 
@@ -51,6 +51,9 @@ class Environment:
 
         for herbivore in herbivores:
             self._set_object_randomly(herbivore)
+
+        for predator in predators:
+            self._set_object_randomly(predator)
 
         for _ in range(self.herbivore_food_amount):
             self._set_object_randomly(HerbivoreFood(nutrition=self.food_nutrition))
@@ -131,8 +134,13 @@ class Environment:
             raise ObjectNotExistsInEnvironment(f'Object {obj} is missing in environment')
         return self.alive_entities_coords[obj]
 
-    def _change_coordinates_of_alive_object(self, entity: AliveEntity, new_coordinates: Coordinates) -> None:
+    def _change_coordinates_of_alive_object(
+            self, entity: AliveEntity, new_coordinates: Coordinates, from_: Optional[Coordinates] = None
+    ) -> None:
         self.alive_entities_coords[entity] = new_coordinates
+        self.matrix[new_coordinates.y][new_coordinates.x] = entity
+        if from_:
+            self.matrix[from_.y][from_.x] = 0
 
     def _set_obj_near(self, near: Coordinates, obj: Any) -> None:
         coordinates_around: List[Coordinates] = [
@@ -162,9 +170,36 @@ class Environment:
 
     def _make_move(self, movement: Movement, obj: AliveEntity) -> None:
         from_: Coordinates = self._get_object_coordinates(obj)
+        desired_coordinates: Coordinates = self._movements_to_coordinates(movement, from_)
 
-        if movement == Movement.STAY:
+        if self.matrix[desired_coordinates.y][desired_coordinates.x] == 0:
+            self._change_coordinates_of_alive_object(obj, desired_coordinates, from_=from_)
             return
+
+        if isinstance(obj, Herbivore) and isinstance(
+            self.matrix[desired_coordinates.y][desired_coordinates.x], HerbivoreFood
+        ):
+            herbivore_food = self.matrix[desired_coordinates.y][desired_coordinates.x]
+            obj.eat(herbivore_food)
+            self._change_coordinates_of_alive_object(obj, desired_coordinates, from_=from_)
+            if self.replenish_food:
+                self._set_object_randomly(HerbivoreFood(self.food_nutrition))
+            return
+
+        if isinstance(obj, Predator) and isinstance(
+                self.matrix[desired_coordinates.y][desired_coordinates.x], Herbivore
+        ):
+            herbivore = self.matrix[desired_coordinates.y][desired_coordinates.x]
+            obj.eat(herbivore)
+            herbivore.was_eaten()
+            self._erase_object(herbivore, self.alive_entities_coords[herbivore])
+            self._change_coordinates_of_alive_object(obj, desired_coordinates, from_=from_)
+            return
+
+    @staticmethod
+    def _movements_to_coordinates(movement: Movement, from_: Coordinates) -> Coordinates:
+        if movement == Movement.STAY:
+            return Coordinates(from_.x, from_.y)
         elif movement == Movement.UP:
             desired_coordinates = Coordinates(from_.x, from_.y - 1)
         elif movement == Movement.DOWN:
@@ -184,14 +219,4 @@ class Environment:
         else:
             raise UnsupportedMovement(f'This movement is not supported: {movement}')
 
-        if self.matrix[desired_coordinates.y][desired_coordinates.x] == 0:
-            self.matrix[desired_coordinates.y][desired_coordinates.x] = obj
-            self.matrix[from_.y][from_.x] = 0
-            self._change_coordinates_of_alive_object(obj, desired_coordinates)
-        elif isinstance(self.matrix[desired_coordinates.y][desired_coordinates.x], HerbivoreFood):
-            obj.eat(self.matrix[desired_coordinates.y][desired_coordinates.x])
-            self.matrix[desired_coordinates.y][desired_coordinates.x] = obj
-            self.matrix[from_.y][from_.x] = 0
-            if self.replenish_food:
-                self._set_object_randomly(HerbivoreFood(self.food_nutrition))
-            self._change_coordinates_of_alive_object(obj, desired_coordinates)
+        return desired_coordinates

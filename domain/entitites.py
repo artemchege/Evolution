@@ -56,6 +56,7 @@ class AliveEntity(ABC):
         self.brain: Brain = brain
         self.matrix_converted = MatrixConverterV2()
         self.uid = uuid.uuid4()
+        self.eaten: bool = False
 
     def increase_lived_for(self) -> None:
         self.lived_for += 1
@@ -68,8 +69,11 @@ class AliveEntity(ABC):
         if self.health < 0:
             raise InvalidEntityState("Health is below 0")
 
+    def was_eaten(self):
+        self.eaten = True
+
     @abstractmethod
-    def eat(self, food: HerbivoreFood) -> None:
+    def eat(self, food) -> None:
         pass
 
     @abstractmethod
@@ -87,6 +91,9 @@ class AliveEntity(ABC):
         if isinstance(other, AliveEntity):
             return self.uid == other.uid
         return NotImplemented
+
+    def __repr__(self):
+        return f'{self.name}, health: {self.health}'
 
 
 class Herbivore(AliveEntity):
@@ -116,5 +123,29 @@ class Herbivore(AliveEntity):
         logger.debug(f'{self} moves {movement} health {self.health}')
         return movement
 
-    def __repr__(self):
-        return f'{self.name}, health: {self.health}'
+
+class Predator(AliveEntity):
+
+    def eat(self, food: Herbivore) -> None:
+        self.health += food.health
+        logger.debug(f'{self.name} ate {food.name}! New health: {self.health}')
+
+    def give_birth(self) -> Optional['AliveEntity']:
+        if self.health > self.birth_config.birth_after:
+            child = self.__class__(
+                name=f'Child-{random.randint(1, 1000)}',
+                health=self.birth_config.health_after_birth,
+                brain=self.brain.get_copy(),
+                birth_config=self.birth_config,
+            )
+            self.decrease_health(self.birth_config.decrease_health_after_birth)
+            return child
+
+    def get_move(self, observation: List[List]) -> Movement:
+        self.decrease_health(1)
+        self.increase_lived_for()
+        converted_observation = self.matrix_converted.from_environment_to_stable_baseline(observation)
+        action_num, _ = self.brain.predict(converted_observation)
+        movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
+        logger.debug(f'{self} moves {movement} health {self.health}')
+        return movement
