@@ -25,6 +25,8 @@ class Environment:
         # Место для новой абстракции хранения
         self.alive_entities_coords: Dict[AliveEntity, Coordinates] = {}
 
+        self.cycle: int = 0
+
     @property
     def has_space_left(self) -> bool:
         for row in self.matrix:
@@ -36,6 +38,9 @@ class Environment:
     @property
     def game_over(self) -> bool:
         return True if len(self.alive_entities_coords) == 0 else False
+
+    def increment_cycle(self):
+        self.cycle += 1
 
     def setup_initial_state(self, herbivores: List[AliveEntity]) -> None:
         self.matrix = self._create_blank_matrix()
@@ -54,6 +59,7 @@ class Environment:
         return self._get_observation(self.alive_entities_coords[living_obj])
 
     def step_living_regime(self) -> Tuple[List[List], bool]:
+        self.increment_cycle()
         next_state: List[List] = self._get_next_state()
         return next_state, self.game_over
 

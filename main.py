@@ -125,7 +125,7 @@ class Runner:
 
 
 def go_runner():
-    Runner(setup=get_setup_for_real_time_training_visualization()).run()
+    Runner(setup=get_setup_for_trained_model()).run()
 
 
 def create_trained_model():

@@ -11,17 +11,20 @@ from visualization.constants import GREY_DARK, GREY_LIGHT, GREEN, BLUE, BLACK
 class Visualizer:
     def __init__(self, env: Environment):
         pygame.display.set_caption('AI')
+        pygame.font.init()
 
-        self.window_width = 800
-        self.window_height = 800
+        self.field_width = 800
+        self.statistic_block_height = 100
+        self.field_height = 800
         self.FPS = 1
-        self.window = pygame.display.set_mode((self.window_width, self.window_height))
+        self.window = pygame.display.set_mode((self.field_width, self.field_height + self.statistic_block_height))
         self.env: Environment = env
+        self.font = pygame.font.SysFont("Arial", 24)
 
         self.number_of_rows: int = self.env.height
         self.number_of_columns: int = self.env.width
-        self.cell_width: int = self.window_width // self.number_of_columns
-        self.cell_height: int = self.window_height // self.number_of_rows
+        self.cell_width: int = self.field_width // self.number_of_columns
+        self.cell_height: int = self.field_height // self.number_of_rows
 
         self.clock = pygame.time.Clock()
 
@@ -31,8 +34,22 @@ class Visualizer:
         self._check_keyboard_events()
         self._create_blank_space()
         self._render(current_global_env_state)
+        self._render_stat()
         pygame.display.update()
         self.clock.tick(self.FPS)
+
+    def _render_stat(self):
+        statistics_rect = pygame.draw.rect(
+            self.window,
+            GREY_LIGHT,
+            (0, self.field_width, self.field_width, self.statistic_block_height),
+            border_radius=20,
+        )
+
+        text_to_render = f"Текущий цикл: {self.env.cycle} Количество травоядных: {len(self.env.alive_entities_coords)}"
+        text = self.font.render(text_to_render, True, BLACK)
+        text_rect = text.get_rect(center=statistics_rect.center)
+        self.window.blit(text, text_rect)
 
     def _create_blank_space(self):
         self.window.fill(GREY_DARK)
