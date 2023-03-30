@@ -4,7 +4,8 @@ import pytest
 
 from domain.brain import RandomBrain, ControlledBrain
 from domain.entitites import AliveEntity, Herbivore, Predator
-from domain.environment import Environment, HerbivoreFoodSustainConstantService
+from domain.environment import Environment
+from domain.sustain_service import HerbivoreFoodSustainConstantService
 from domain.exceptions import NotVacantPlaceException
 from domain.objects import Coordinates, HerbivoreFood, Movement, BirthSetup
 

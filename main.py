@@ -7,7 +7,9 @@ from stable_baselines3 import PPO
 from contrib.utils import logger
 from domain.entitites import Herbivore
 from domain.brain import TrainedBrain100000
-from domain.environment import Environment, HerbivoreFoodSustainConstantService, HerbivoreFoodSustainEvery3CycleService
+from domain.environment import Environment
+from domain.sustain_service import HerbivoreFoodSustainEvery3CycleService, HerbivoreFoodSustainEveryCycleService, \
+    HerbivoreFoodSustainConstantService
 from domain.objects import Setup, WindowSetup, AliveEntitySetup, TrainSetup, Movement, BirthSetup
 from evolution.training import HerbivoreTrainer, BrainForTraining
 from visualization.visualize import Visualizer
@@ -16,19 +18,23 @@ from visualization.visualize import Visualizer
 def get_setup_for_trained_model():
     return Setup(
         window=WindowSetup(
-            width=16,
-            height=16,
+            width=50,
+            height=50,
         ),
         sustain_services=[
-            HerbivoreFoodSustainConstantService(
-                required_amount_of_herb_food=50, food_nutrition=3,
+            HerbivoreFoodSustainEveryCycleService(
+                initial_food_amount=600, food_nutrition=30,
             )
         ],
         herbivore=AliveEntitySetup(
             herbivores_amount=5,
             brain=partial(TrainedBrain100000),
             initial_health=10,
-            birth=None,
+            birth=BirthSetup(
+                decrease_health_after_birth=250,
+                health_after_birth=10,
+                birth_after=300,
+            ),
         ),
         predator=None,
     )
@@ -130,5 +136,5 @@ def train_best_herbivore():
 
 
 if __name__ == '__main__':
-    Runner(setup=get_setup_for_real_time_training_visualization()).run()
+    Runner(setup=get_setup_for_trained_model()).run()
     # train_best_herbivore()
