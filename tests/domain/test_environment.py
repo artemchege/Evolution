@@ -1,14 +1,12 @@
 import itertools
-from functools import partial
 
 import pytest
 
-from domain.brain import RandomBrain, ControlledBrain, TrainedBrain100000
+from domain.brain import RandomBrain, ControlledBrain
 from domain.entitites import AliveEntity, Herbivore, Predator
-from domain.environment import Environment
+from domain.environment import Environment, FoodSustainService
 from domain.exceptions import NotVacantPlaceException
-from domain.objects import Coordinates, HerbivoreFood, Movement, Setup, WindowSetup, FoodSetup, HerbivoreSetup, \
-    HerbivoreTrainSetup, BirthSetup
+from domain.objects import Coordinates, HerbivoreFood, Movement, BirthSetup
 
 MOVEMENT_TEST_CASES = {
     "up_left": {
@@ -224,7 +222,7 @@ class TestEnvironment:
         basic_env.width = 3
         basic_env.height = 3
 
-        basic_env._set_object_randomly(basic_herbivore)
+        basic_env.set_object_randomly_in_environment(basic_herbivore)
         for row in basic_env.matrix:
             for element in row:
                 if element != 0:
@@ -264,7 +262,15 @@ class TestEnvironment:
     def test_setup_initial_state(self, basic_env, basic_herbivore, basic_predator):
         basic_env.setup_initial_state(herbivores=[basic_herbivore], predators=[basic_predator])
         flatten_matrix = list(itertools.chain(*basic_env.matrix))
-        assert len([x for x in flatten_matrix if isinstance(x, HerbivoreFood)]) == 50
+        assert len([x for x in flatten_matrix if isinstance(x, AliveEntity)]) == 2
+        assert len([x for x in flatten_matrix if isinstance(x, Predator)]) == 1
+        assert len([x for x in flatten_matrix if isinstance(x, Herbivore)]) == 1
+
+    def test_setup_initial_state_with_herb_food_sustain_service(self, basic_env, basic_herbivore, basic_predator):
+        basic_env.sustain_services = [FoodSustainService(required_amount_of_herb_food=10, food_nutrition=3)]
+        basic_env.setup_initial_state(herbivores=[basic_herbivore], predators=[basic_predator])
+        flatten_matrix = list(itertools.chain(*basic_env.matrix))
+        assert len([x for x in flatten_matrix if isinstance(x, HerbivoreFood)]) == 10
         assert len([x for x in flatten_matrix if isinstance(x, AliveEntity)]) == 2
         assert len([x for x in flatten_matrix if isinstance(x, Predator)]) == 1
         assert len([x for x in flatten_matrix if isinstance(x, Herbivore)]) == 1
@@ -316,6 +322,38 @@ class TestEnvironment:
         assert basic_env.matrix == [
             [0, basic_predator, 0],
             [0, basic_herbivore, 0],
+            [0, 0, 0]
+        ]
+
+    def test_make_move_herbivore_steps_on_herbivore(self, basic_env, basic_herbivore):
+        basic_env.matrix = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ]
+        another_herbivore = Herbivore(name='Gum', health=10, brain=RandomBrain())
+        basic_env._respawn_object(Coordinates(1, 0), another_herbivore)
+        basic_env._respawn_object(Coordinates(1, 1), basic_herbivore)
+        basic_env._make_move(Movement.UP, basic_herbivore)
+        assert basic_env.matrix == [
+            [0, another_herbivore, 0],
+            [0, basic_herbivore, 0],
+            [0, 0, 0]
+        ]
+
+    def test_make_move_predator_steps_on_predator(self, basic_env, basic_predator):
+        basic_env.matrix = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ]
+        another_predator = Predator(name='Gum', health=10, brain=RandomBrain())
+        basic_env._respawn_object(Coordinates(1, 0), another_predator)
+        basic_env._respawn_object(Coordinates(1, 1), basic_predator)
+        basic_env._make_move(Movement.UP, basic_predator)
+        assert basic_env.matrix == [
+            [0, another_predator, 0],
+            [0, basic_predator, 0],
             [0, 0, 0]
         ]
 
@@ -445,36 +483,36 @@ class TestEnvironment:
             [0, 0, 0, 0, 0],
         ]
 
+    def test_get_next_state_with_sustain_herb_food_service(self, basic_env, basic_herbivore, basic_predator):
+        basic_env.matrix = [
+            [0, 0, 0, 0, 0],
+            [0, 0, HerbivoreFood(3), 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+        ]
+        basic_env.herbivore_food_amount = 1
+        basic_env.width, basic_env.height = 5, 5
+        basic_env.sustain_services = [FoodSustainService(required_amount_of_herb_food=3, food_nutrition=3)]
+        basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
+        basic_herbivore.brain.set_next_movement(2)
+        basic_env._get_next_state()
+        flatten_matrix = list(itertools.chain(*basic_env.matrix))
+        assert len([x for x in flatten_matrix if isinstance(x, HerbivoreFood)]) == 3
+        assert basic_env.alive_entities_coords[basic_herbivore] == Coordinates(2, 1)
+
     def test_get_next_state_herb_give_birth(self):
-        basic_env = Environment(
-            setup=Setup(
-                window=WindowSetup(
-                    width=16,
-                    height=16,
-                ),
-                food=FoodSetup(
-                    herbivore_food_amount=50,
-                    herbivore_food_nutrition=3,
-                    replenish_food=False,
-                ),
-                herbivore=HerbivoreSetup(
-                    herbivores_amount=5,
-                    brain=partial(TrainedBrain100000),
-                ),
-                train=HerbivoreTrainSetup(),
-                birth=BirthSetup(
-                    decrease_health_after_birth=10,
-                    health_after_birth=10,
-                    birth_after=10,
-                )
-            )
-        )
+        basic_env = Environment(window_width=5, window_height=5, sustain_services=[])
 
         basic_herbivore = Herbivore(
             name='test herb',
             health=100,
             brain=RandomBrain(),
-            birth_config=basic_env.setup.birth,
+            birth_config=BirthSetup(
+                decrease_health_after_birth=10,
+                health_after_birth=10,
+                birth_after=10,
+            ),
         )
 
         basic_env.matrix = [
