@@ -1,6 +1,6 @@
 import enum
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, List
 
 
 @dataclass
@@ -46,37 +46,31 @@ class WindowSetup:
 
 
 @dataclass
-class FoodSetup:
-    herbivore_food_amount: int
-    herbivore_food_nutrition: int
-    replenish_food: bool
-
-
-@dataclass
-class HerbivoreSetup:
-    herbivores_amount: int
-    brain: Any  # Brain
-
-
-@dataclass
-class HerbivoreTrainSetup:
+class TrainSetup:
     learn_frequency: int = 4  # Randomly after this number of steps
     learn_n_steps: int = 128  # Rollout capacity
     learn_timesteps: int = 1  # noqa
-    max_live_training_length: int = 3000
 
 
 @dataclass
 class BirthSetup:
     decrease_health_after_birth: int
     health_after_birth: int
-    birth_after: Optional[int] = None  # If reproduction is available, if yes, after which amount of heath
+    birth_after: int
+
+
+@dataclass
+class AliveEntitySetup:
+    herbivores_amount: int
+    initial_health: int
+    brain: Any  # Brain
+    birth: Optional[BirthSetup]
 
 
 @dataclass
 class Setup:
     window: WindowSetup
-    food: FoodSetup
-    herbivore: HerbivoreSetup
-    birth: BirthSetup
-    train: Optional[HerbivoreTrainSetup]
+    sustain_services: List  # SustainService
+    herbivore: AliveEntitySetup
+    predator: Optional[AliveEntitySetup] = None
+

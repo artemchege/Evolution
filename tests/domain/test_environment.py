@@ -4,7 +4,7 @@ import pytest
 
 from domain.brain import RandomBrain, ControlledBrain
 from domain.entitites import AliveEntity, Herbivore, Predator
-from domain.environment import Environment, FoodSustainService
+from domain.environment import Environment, HerbivoreFoodSustainConstantService
 from domain.exceptions import NotVacantPlaceException
 from domain.objects import Coordinates, HerbivoreFood, Movement, BirthSetup
 
@@ -267,7 +267,7 @@ class TestEnvironment:
         assert len([x for x in flatten_matrix if isinstance(x, Herbivore)]) == 1
 
     def test_setup_initial_state_with_herb_food_sustain_service(self, basic_env, basic_herbivore, basic_predator):
-        basic_env.sustain_services = [FoodSustainService(required_amount_of_herb_food=10, food_nutrition=3)]
+        basic_env.sustain_services = [HerbivoreFoodSustainConstantService(required_amount_of_herb_food=10, food_nutrition=3)]
         basic_env.setup_initial_state(herbivores=[basic_herbivore], predators=[basic_predator])
         flatten_matrix = list(itertools.chain(*basic_env.matrix))
         assert len([x for x in flatten_matrix if isinstance(x, HerbivoreFood)]) == 10
@@ -493,7 +493,7 @@ class TestEnvironment:
         ]
         basic_env.herbivore_food_amount = 1
         basic_env.width, basic_env.height = 5, 5
-        basic_env.sustain_services = [FoodSustainService(required_amount_of_herb_food=3, food_nutrition=3)]
+        basic_env.sustain_services = [HerbivoreFoodSustainConstantService(required_amount_of_herb_food=3, food_nutrition=3)]
         basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
         basic_herbivore.brain.set_next_movement(2)
         basic_env._get_next_state()

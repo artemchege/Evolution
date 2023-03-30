@@ -19,7 +19,8 @@ class Visualizer:
         self.FPS = 1
         self.window = pygame.display.set_mode((self.field_width, self.field_height + self.statistic_block_height))
         self.env: Environment = env
-        self.font = pygame.font.SysFont("Arial", 24)
+        self.large_font = pygame.font.SysFont("Arial", 24)
+        self.small_font = pygame.font.SysFont("Arial", 12)
 
         self.number_of_rows: int = self.env.height
         self.number_of_columns: int = self.env.width
@@ -46,8 +47,10 @@ class Visualizer:
             border_radius=20,
         )
 
-        text_to_render = f"Текущий цикл: {self.env.cycle} Количество травоядных: {len(self.env.alive_entities_coords)}"
-        text = self.font.render(text_to_render, True, BLACK)
+        text_to_render = f"Current cycle: {self.env.cycle}. " \
+                         f"Herbivores: {len(self.env.alive_entities_coords)}. " \
+                         f"Food: {self.env.herbivore_food_amount}."
+        text = self.large_font.render(text_to_render, True, BLACK)
         text_rect = text.get_rect(center=statistics_rect.center)
         self.window.blit(text, text_rect)
 
@@ -73,7 +76,7 @@ class Visualizer:
 
                 if isinstance(element, AliveEntity):
                     entity_circle = pygame.draw.circle(self.window, BLUE, (cell_center.x, cell_center.y), radius)
-                    text = self.font.render(str(element.health), True, BLACK)
+                    text = self.small_font.render(str(element.health), True, BLACK)
                     text_rect = text.get_rect(center=entity_circle.center)
                     self.window.blit(text, text_rect)
 

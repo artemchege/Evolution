@@ -41,15 +41,14 @@ class Environment:
     def increment_cycle(self):
         self.cycle += 1
 
-    def set_herbivore_food_amount(self, amount: int):
-        self.herbivore_food_amount = amount
+    def increment_food_amount(self):
+        self.herbivore_food_amount += 1
 
     def decrease_food_amount(self):
         self.herbivore_food_amount -= 1
 
     def setup_initial_state(self, herbivores: List[Herbivore], predators: List[Predator]) -> None:
         self.matrix = self._create_blank_matrix()
-        self.alive_entities_coords = {}
 
         if len(herbivores) < 1:
             raise SetupEnvironmentError("No herbivores were provided")
@@ -60,7 +59,8 @@ class Environment:
         for predator in predators:
             self.set_object_randomly_in_environment(predator)
 
-        self._call_sustain_services()
+        for sustain_service in self.sustain_services:
+            sustain_service.initial_sustain(self)
 
     def set_object_randomly_in_environment(self, obj: Any) -> None:
         if not self.has_space_left:
@@ -73,10 +73,6 @@ class Environment:
             if self._is_empty_coordinates(random_coordinates):
                 self._respawn_object(random_coordinates, obj)
                 in_process = False
-
-    def _call_sustain_services(self):
-        for sustain_service in self.sustain_services:
-            sustain_service.sustain(self)
 
     def get_living_object_observation(self, living_obj: AliveEntity) -> List[List]:
         return self._get_observation(self.alive_entities_coords[living_obj])
@@ -104,10 +100,14 @@ class Environment:
             do_not_move.append(entity)
 
         self._erase_dead_entities()
-        self._call_sustain_services()
+        for sustain_service in self.sustain_services:
+            sustain_service.subsequent_sustain(self)
         return self.matrix
 
     def _create_blank_matrix(self):
+        self.herbivore_food_amount = 0
+        self.alive_entities_coords = {}
+        self.cycle = 0
         return [
             [0 if i not in (0, self.width - 1) and j not in (0, self.height - 1) else None for j in range(self.height)]
             for i in range(self.width)
@@ -232,23 +232,49 @@ class Environment:
 class SustainService(Protocol):
     """ Service that watch after some objects in environment and replicate them if needed """
 
-    def sustain(self, environment: Environment) -> None:
+    def initial_sustain(self, environment: Environment) -> None:
+        pass
+
+    def subsequent_sustain(self, environment: Environment) -> None:
         pass
 
 
-class FoodSustainService:
+class HerbivoreFoodSustainConstantService:
     """ Watch after HerbivoreFood and replenish """
 
     def __init__(self, required_amount_of_herb_food: int, food_nutrition: int):
         self.required_amount_of_herb_food = required_amount_of_herb_food
         self.food_nutrition = food_nutrition
 
-    def sustain(self, environment: Environment) -> None:
+    def initial_sustain(self, environment: Environment) -> None:
         current_amount: int = environment.herbivore_food_amount
         diff_in_amount: int = self.required_amount_of_herb_food - current_amount
         for _ in range(diff_in_amount):
             environment.set_object_randomly_in_environment(HerbivoreFood(self.food_nutrition))
-        environment.set_herbivore_food_amount(self.required_amount_of_herb_food)
+            environment.increment_food_amount()
+
+    def subsequent_sustain(self, environment: Environment) -> None:
+        self.initial_sustain(environment)
+
+
+class HerbivoreFoodSustainEvery3CycleService:
+    """ Watch after HerbivoreFood and replenish """
+
+    def __init__(self, initial_food_amount: int, food_nutrition: int):
+        self.initial_food_amount: int = initial_food_amount
+        self.food_nutrition = food_nutrition
+
+    def initial_sustain(self, environment: Environment) -> None:
+        current_amount: int = environment.herbivore_food_amount
+        diff_in_amount: int = self.initial_food_amount - current_amount
+        for _ in range(diff_in_amount):
+            environment.set_object_randomly_in_environment(HerbivoreFood(self.food_nutrition))
+            environment.increment_food_amount()
+
+    def subsequent_sustain(self, environment: Environment):
+        if environment.cycle % 3 == 0:
+            environment.set_object_randomly_in_environment(HerbivoreFood(self.food_nutrition))
+            environment.increment_food_amount()
 
 
 class HerbivoreSustainService:
