@@ -1,3 +1,4 @@
+import json
 import random
 from copy import copy
 from typing import Optional, List, Any, Tuple, Dict, Protocol
@@ -237,3 +238,30 @@ class SustainService(Protocol):
 
     def subsequent_sustain(self, environment: Environment) -> None:
         pass
+
+
+class StatisticsCollector:
+
+    def __init__(self, environment: Environment, filename: str):
+        self.environment: Environment = environment
+        self.filename: str = filename
+        self.snapshots: List[dict] = []
+
+    def make_snapshot(self):
+        self.snapshots.append(
+            {
+                "cycle": self.environment.cycle,
+                "alive_entities": len(self.environment.alive_entities_coords),
+                "herbivores_amount": len(
+                    [entity for entity in self.environment.alive_entities_coords.keys() if isinstance(entity, Herbivore)]
+                ),
+                "predators_amount": len(
+                    [entity for entity in self.environment.alive_entities_coords.keys() if isinstance(entity, Predator)]
+                ),
+                "herbivore_food": self.environment.herbivore_food_amount,
+            }
+        )
+
+    def dump_to_file(self):
+        with open(f"{self.filename}.json", "w") as file:
+            json.dump(self.snapshots, file)

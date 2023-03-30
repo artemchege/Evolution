@@ -72,5 +72,6 @@ class Setup:
     window: WindowSetup
     sustain_services: List  # SustainService
     herbivore: AliveEntitySetup
+    cycle_length: Optional[int] = None
     predator: Optional[AliveEntitySetup] = None
 

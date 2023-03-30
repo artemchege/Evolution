@@ -6,10 +6,13 @@ from stable_baselines3 import PPO
 
 from contrib.utils import logger
 from domain.entitites import Herbivore
-from domain.brain import TrainedBrain100000
-from domain.environment import Environment
-from domain.sustain_service import HerbivoreFoodSustainEvery3CycleService, HerbivoreFoodSustainEveryCycleService, \
+from domain.brain import TrainedBrain100000, RandomBrain
+from domain.environment import Environment, StatisticsCollector
+from domain.sustain_service import (
+    HerbivoreFoodSustainEvery3CycleService,
+    HerbivoreFoodSustainEveryCycleService,
     HerbivoreFoodSustainConstantService
+)
 from domain.objects import Setup, WindowSetup, AliveEntitySetup, TrainSetup, Movement, BirthSetup
 from evolution.training import HerbivoreTrainer, BrainForTraining
 from visualization.visualize import Visualizer
@@ -22,8 +25,8 @@ def get_setup_for_trained_model():
             height=50,
         ),
         sustain_services=[
-            HerbivoreFoodSustainEveryCycleService(
-                initial_food_amount=600, food_nutrition=30,
+            HerbivoreFoodSustainEvery3CycleService(
+                initial_food_amount=300, food_nutrition=15,
             )
         ],
         herbivore=AliveEntitySetup(
@@ -37,6 +40,7 @@ def get_setup_for_trained_model():
             ),
         ),
         predator=None,
+        cycle_length=None,
     )
 
 
@@ -95,6 +99,7 @@ class Runner:
             sustain_services=self.setup.sustain_services,
         )
         self.visualizer: Visualizer = Visualizer(self.environment)
+        self.statistics_collector = StatisticsCollector(environment=self.environment, filename='stat')
 
     def run(self):
         herbivores = [
@@ -111,9 +116,17 @@ class Runner:
         while run:
             state_to_render, _ = self.environment.step_living_regime()
             self.visualizer.render_step(state_to_render)
+            self.statistics_collector.make_snapshot()
+
+            if self.setup.cycle_length and self.environment.cycle >= self.setup.cycle_length:
+                run = False
+
+            if self.environment.game_over:
+                run = False
 
         pygame.quit()
-        logger.debug('Game was closed')
+        self.statistics_collector.dump_to_file()
+        logger.info('Game was closed')
 
 
 def train_best_herbivore():
