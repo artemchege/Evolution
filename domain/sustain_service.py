@@ -63,5 +63,8 @@ class HerbivoreFoodSustainConstantService:
 class HerbivoreSustainService:
     """ Sustain enough amount of herbivores in the env so predator might eat something """
 
-    def sustain(self, environment: Environment) -> None:
+    def initial_sustain(self, environment: Environment) -> None:
+        pass
+
+    def subsequent_sustain(self, environment: Environment) -> None:
         pass

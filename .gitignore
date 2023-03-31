@@ -4,5 +4,6 @@ Training/
 .idea/
 .ipynb_checkpoints/
 stable_diff_tutorial/
+statistics/*
 main.ipynb
 stat.json

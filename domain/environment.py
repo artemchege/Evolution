@@ -263,5 +263,5 @@ class StatisticsCollector:
         )
 
     def dump_to_file(self):
-        with open(f"{self.filename}.json", "w") as file:
+        with open(f"statistics/{self.filename}.json", "w") as file:
             json.dump(self.snapshots, file)

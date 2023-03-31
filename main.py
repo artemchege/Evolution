@@ -40,7 +40,7 @@ def get_setup_for_trained_model():
             ),
         ),
         predator=None,
-        cycle_length=None,
+        cycle_length=100,
     )
 
 

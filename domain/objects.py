@@ -34,32 +34,32 @@ MOVEMENT_MAPPER_ADJACENT = {
 }
 
 
-@dataclass
+@dataclass(frozen=True)
 class HerbivoreFood:
     nutrition: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class WindowSetup:
     width: int
     height: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrainSetup:
     learn_frequency: int = 4  # Randomly after this number of steps
     learn_n_steps: int = 128  # Rollout capacity
     learn_timesteps: int = 1  # noqa
 
 
-@dataclass
+@dataclass(frozen=True)
 class BirthSetup:
     decrease_health_after_birth: int
     health_after_birth: int
     birth_after: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class AliveEntitySetup:
     herbivores_amount: int
     initial_health: int
@@ -67,7 +67,7 @@ class AliveEntitySetup:
     birth: Optional[BirthSetup]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Setup:
     window: WindowSetup
     sustain_services: List  # SustainService
