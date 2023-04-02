@@ -60,8 +60,9 @@ class BirthSetup:
 
 
 @dataclass(frozen=True)
-class AliveEntitySetup:
-    herbivores_amount: int
+class EntitySetup:
+    entity_type: Any  # Type[Union[Predator, Herbivore]]
+    entities_amount: int
     initial_health: int
     brain: Any  # Brain
     birth: Optional[BirthSetup]
@@ -70,8 +71,7 @@ class AliveEntitySetup:
 @dataclass(frozen=True)
 class Setup:
     window: WindowSetup
-    sustain_services: List  # SustainService
-    herbivore: AliveEntitySetup
+    sustain_services: List  # List[SustainService]
+    entities: List[EntitySetup]
     cycle_length: Optional[int] = None
-    predator: Optional[AliveEntitySetup] = None
 

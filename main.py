@@ -1,24 +1,26 @@
 import random
 from functools import partial
+from typing import Union, List
 
 import pygame
 from stable_baselines3 import PPO
 
 from contrib.utils import logger
-from domain.entitites import Herbivore
+from domain.entitites import Herbivore, Predator
 from domain.brain import TrainedBrain100000, RandomBrain
 from domain.environment import Environment, StatisticsCollector
 from domain.sustain_service import (
     HerbivoreFoodSustainEvery3CycleService,
     HerbivoreFoodSustainEveryCycleService,
-    HerbivoreFoodSustainConstantService
+    HerbivoreFoodSustainConstantService,
+    HerbivoreSustainConstantService
 )
-from domain.objects import Setup, WindowSetup, AliveEntitySetup, TrainSetup, Movement, BirthSetup
-from evolution.training import HerbivoreTrainer, BrainForTraining
+from domain.objects import Setup, WindowSetup, EntitySetup, TrainSetup, Movement, BirthSetup
+from evolution.training import EntityTrainer, BrainForTraining
 from visualization.visualize import Visualizer
 
 
-def get_setup_for_trained_model():
+def get_setup_for_trained_model_herb():
     return Setup(
         window=WindowSetup(
             width=50,
@@ -29,18 +31,53 @@ def get_setup_for_trained_model():
                 initial_food_amount=300, food_nutrition=15,
             )
         ],
-        herbivore=AliveEntitySetup(
-            herbivores_amount=5,
-            brain=partial(TrainedBrain100000),
-            initial_health=10,
-            birth=BirthSetup(
-                decrease_health_after_birth=250,
-                health_after_birth=10,
-                birth_after=300,
+        entities=[
+            EntitySetup(
+                entity_type=Herbivore,
+                entities_amount=5,
+                brain=partial(TrainedBrain100000),
+                initial_health=10,
+                birth=BirthSetup(
+                    decrease_health_after_birth=250,
+                    health_after_birth=10,
+                    birth_after=300,
+                ),
             ),
+        ]
+    )
+
+
+def get_setup_for_trained_model_predator():
+    return Setup(
+        window=WindowSetup(
+            width=50,
+            height=50,
         ),
-        predator=None,
-        cycle_length=100,
+        sustain_services=[
+            HerbivoreFoodSustainEvery3CycleService(
+                initial_food_amount=300, food_nutrition=15,
+            ),
+            # HerbivoreFoodSustainConstantService(required_amount_of_herb_food=200, food_nutrition=3),
+            HerbivoreSustainConstantService(
+                required_amount_of_herbivores=30, initial_herbivore_health=10,
+            ),
+        ],
+        entities=[
+            EntitySetup(
+                entity_type=Predator,
+                entities_amount=1,
+                initial_health=1000,
+                brain=RandomBrain,
+                birth=None,
+            ),
+            EntitySetup(
+                entity_type=Herbivore,
+                entities_amount=20,
+                initial_health=30,
+                brain=RandomBrain,
+                birth=None,
+            ),
+        ]
     )
 
 
@@ -59,7 +96,7 @@ def get_setup_for_real_time_training_visualization():
             learn_timesteps=1000,
             learn_n_steps=512,
         ),
-        gym_trainer=HerbivoreTrainer(
+        gym_trainer=EntityTrainer(
             movement_class=Movement,
             environment=Environment(
                 window_width=window_setup.width,
@@ -73,17 +110,19 @@ def get_setup_for_real_time_training_visualization():
 
     return Setup(
         window=window_setup,
-        herbivore=AliveEntitySetup(
-            herbivores_amount=5,
-            brain=herb_brain,
-            birth=BirthSetup(
-                decrease_health_after_birth=10,
-                health_after_birth=10,
-                birth_after=15,
+        entities=[
+            EntitySetup(
+                entity_type=Herbivore,
+                entities_amount=5,
+                brain=herb_brain,
+                birth=BirthSetup(
+                    decrease_health_after_birth=10,
+                    health_after_birth=10,
+                    birth_after=15,
+                ),
+                initial_health=10,
             ),
-            initial_health=10,
-        ),
-        predator=None,
+        ],
         sustain_services=[HerbivoreFoodSustainEvery3CycleService(food_nutrition=3, initial_food_amount=1000)],
     )
 
@@ -102,15 +141,18 @@ class Runner:
         self.statistics_collector = StatisticsCollector(environment=self.environment, filename='stat')
 
     def run(self):
-        herbivores = [
-            Herbivore(
-                health=self.setup.herbivore.initial_health,
-                name=f"Initial herbivore #{random.randint(1, 10000)}",
-                brain=self.setup.herbivore.brain(),
-                birth_config=self.setup.herbivore.birth,
-            ) for _ in range(self.setup.herbivore.herbivores_amount)
+        entities: List[Union[Predator, Herbivore]] = [
+            entity_setup.entity_type(
+                health=entity_setup.initial_health,
+                name=f"{entity_setup.entity_type.__name__}#{random.randint(1, 10000)}",
+                brain=entity_setup.brain,
+                birth_config=entity_setup.birth,
+            )
+            for entity_setup in self.setup.entities
+            for _ in range(entity_setup.entities_amount)
         ]
-        self.environment.setup_initial_state(herbivores=herbivores, predators=[])
+
+        self.environment.setup_initial_state(entities=entities)
 
         run = True
         while run:
@@ -130,7 +172,7 @@ class Runner:
 
 
 def train_best_herbivore():
-    gym_trainer = HerbivoreTrainer(
+    gym_trainer = EntityTrainer(
         movement_class=Movement,
         environment=Environment(
             window_width=50,
@@ -149,5 +191,5 @@ def train_best_herbivore():
 
 
 if __name__ == '__main__':
-    Runner(setup=get_setup_for_trained_model()).run()
+    Runner(setup=get_setup_for_trained_model_predator()).run()
     # train_best_herbivore()

@@ -2,10 +2,10 @@ from typing import List
 
 import pygame
 
-from domain.entitites import AliveEntity
+from domain.entitites import AliveEntity, Predator
 from domain.environment import Environment
 from domain.objects import Coordinates, HerbivoreFood
-from visualization.constants import GREY_DARK, GREY_LIGHT, GREEN, BLUE, BLACK
+from visualization.constants import GREY_DARK, GREY_LIGHT, GREEN, BLUE, BLACK, RED
 
 
 class Visualizer:
@@ -47,9 +47,12 @@ class Visualizer:
             border_radius=20,
         )
 
-        text_to_render = f"Current cycle: {self.env.cycle}. " \
-                         f"Herbivores: {len(self.env.alive_entities_coords)}. " \
-                         f"Food: {self.env.herbivore_food_amount}."
+        text_to_render = (
+            f"Current cycle: {self.env.cycle}. "
+            f"Herbivores: {self.env.herbivores_amount}. "
+            f"Predators: {self.env.predators_amount}. "
+            f"Food: {self.env.herbivore_food_amount}."
+        )
         text = self.large_font.render(text_to_render, True, BLACK)
         text_rect = text.get_rect(center=statistics_rect.center)
         self.window.blit(text, text_rect)
@@ -83,6 +86,12 @@ class Visualizer:
                 if isinstance(element, HerbivoreFood):
                     pygame.draw.circle(self.window, GREEN, (cell_center.x, cell_center.y), radius)
 
+                if isinstance(element, Predator):
+                    entity_circle = pygame.draw.circle(self.window, RED, (cell_center.x, cell_center.y), radius)
+                    text = self.small_font.render(str(element.health), True, BLACK)
+                    text_rect = text.get_rect(center=entity_circle.center)
+                    self.window.blit(text, text_rect)
+
                 if element is None:
                     pygame.draw.circle(self.window, BLACK, (cell_center.x, cell_center.y), radius)
 
@@ -90,7 +99,7 @@ class Visualizer:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_s:
-                    self.FPS = 1  # set slow rendering
+                    self.FPS = 1
                 elif event.key == pygame.K_f:
                     self.FPS = 30
 

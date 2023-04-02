@@ -28,5 +28,5 @@ def basic_predator():
     return Predator(
         name='Test predator',
         health=10,
-        brain=RandomBrain(),
+        brain=ControlledBrain(),
     )

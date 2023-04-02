@@ -4,8 +4,12 @@ from copy import copy
 from typing import Optional, List, Any, Tuple, Dict, Protocol
 
 from domain.entitites import AliveEntity, Predator, Herbivore
-from domain.exceptions import NotVacantPlaceException, UnsupportedMovement, ObjectNotExistsInEnvironment, \
-    SetupEnvironmentError
+from domain.exceptions import (
+    NotVacantPlaceException,
+    UnsupportedMovement,
+    ObjectNotExistsInEnvironment,
+    SetupEnvironmentError,
+)
 from domain.objects import Movement, Coordinates, HerbivoreFood
 from contrib.utils import logger
 
@@ -36,6 +40,14 @@ class Environment:
         return False
 
     @property
+    def herbivores_amount(self) -> int:
+        return len([herbivore for herbivore in self.alive_entities_coords if isinstance(herbivore, Herbivore)])
+
+    @property
+    def predators_amount(self) -> int:
+        return len([predator for predator in self.alive_entities_coords if isinstance(predator, Predator)])
+
+    @property
     def game_over(self) -> bool:
         return True if len(self.alive_entities_coords) == 0 else False
 
@@ -48,17 +60,14 @@ class Environment:
     def decrease_food_amount(self):
         self.herbivore_food_amount -= 1
 
-    def setup_initial_state(self, herbivores: List[Herbivore], predators: List[Predator]) -> None:
+    def setup_initial_state(self, entities: List[AliveEntity]) -> None:
         self.matrix = self._create_blank_matrix()
 
-        if len(herbivores) < 1:
+        if len(entities) < 1:
             raise SetupEnvironmentError("No herbivores were provided")
 
-        for herbivore in herbivores:
-            self.set_object_randomly_in_environment(herbivore)
-
-        for predator in predators:
-            self.set_object_randomly_in_environment(predator)
+        for entity in entities:
+            self.set_object_randomly_in_environment(entity)
 
         for sustain_service in self.sustain_services:
             sustain_service.initial_sustain(self)
@@ -81,6 +90,9 @@ class Environment:
     def step_living_regime(self) -> Tuple[List[List], bool]:
         self.increment_cycle()
         next_state: List[List] = self._get_next_state()
+        self._erase_dead_entities()
+        for sustain_service in self.sustain_services:
+            sustain_service.subsequent_sustain(self)
         return next_state, self.game_over
 
     def _get_next_state(self) -> List[List]:
@@ -91,18 +103,42 @@ class Environment:
             if entity in do_not_move:
                 continue
 
+            observation: List[List] = self.get_living_object_observation(entity)
+            from_ = self._get_object_coordinates(entity)
+            entity_movement: Movement = entity.get_move(observation=observation)
+            desired_coordinates: Coordinates = self._movements_to_coordinates(
+                movement=entity_movement,
+                from_=from_,
+            )
+
+            if self.matrix[desired_coordinates.y][desired_coordinates.x] == 0:
+                self._change_coordinates_of_alive_object(entity, desired_coordinates, from_=from_)
+
+            if isinstance(entity, Herbivore) and isinstance(
+                    self.matrix[desired_coordinates.y][desired_coordinates.x], HerbivoreFood
+            ):
+                herbivore_food = self.matrix[desired_coordinates.y][desired_coordinates.x]
+                entity.eat(herbivore_food)
+                self._change_coordinates_of_alive_object(entity, desired_coordinates, from_=from_)
+                self.decrease_food_amount()
+
+            if isinstance(entity, Predator) and isinstance(
+                    self.matrix[desired_coordinates.y][desired_coordinates.x], Herbivore
+            ):
+                herbivore = self.matrix[desired_coordinates.y][desired_coordinates.x]
+                entity.eat(herbivore)
+                herbivore.was_eaten()
+                self._erase_object(obj=herbivore, where=self._get_object_coordinates(herbivore))
+                self._change_coordinates_of_alive_object(entity, desired_coordinates, from_=from_)
+                do_not_move.append(herbivore)
+                logger.info(f'{entity} eats {herbivore}')
+
             if child := entity.give_birth():
-                self._set_obj_near(near=self.alive_entities_coords[entity], obj=child)
+                self._set_obj_near(near=self._get_object_coordinates(entity), obj=child)
                 do_not_move.append(child)
 
-            observation: List[List] = self._get_observation(self.alive_entities_coords[entity])
-            movement: Movement = entity.get_move(observation=observation)
-            self._make_move(movement, entity)
             do_not_move.append(entity)
 
-        self._erase_dead_entities()
-        for sustain_service in self.sustain_services:
-            sustain_service.subsequent_sustain(self)
         return self.matrix
 
     def _create_blank_matrix(self):
@@ -164,7 +200,7 @@ class Environment:
         self.set_object_randomly_in_environment(obj)
         logger.warning('Cannot respawn near to the parent, respawning randomly')
 
-    def _erase_object(self, obj: Any, where: Coordinates) -> None:
+    def _erase_object(self, obj: AliveEntity, where: Coordinates) -> None:
         self.matrix[where.y][where.x] = 0
         if isinstance(obj, AliveEntity):
             if obj in self.alive_entities_coords:
@@ -173,36 +209,11 @@ class Environment:
                 raise ObjectNotExistsInEnvironment(f'Error while deleting object: {obj}, where: {where}')
 
     def _erase_dead_entities(self):
-        dead_entities: List[AliveEntity] = [entity for entity in self.alive_entities_coords if entity.health <= 0]
+        dead_entities: List[AliveEntity] = [
+            entity for entity in self.alive_entities_coords if entity.health <= 0 or entity.eaten
+        ]
         for entity in dead_entities:
-            self._erase_object(entity, self.alive_entities_coords[entity])
-
-    def _make_move(self, movement: Movement, obj: AliveEntity) -> None:
-        from_: Coordinates = self._get_object_coordinates(obj)
-        desired_coordinates: Coordinates = self._movements_to_coordinates(movement, from_)
-
-        if self.matrix[desired_coordinates.y][desired_coordinates.x] == 0:
-            self._change_coordinates_of_alive_object(obj, desired_coordinates, from_=from_)
-            return
-
-        if isinstance(obj, Herbivore) and isinstance(
-            self.matrix[desired_coordinates.y][desired_coordinates.x], HerbivoreFood
-        ):
-            herbivore_food = self.matrix[desired_coordinates.y][desired_coordinates.x]
-            obj.eat(herbivore_food)
-            self._change_coordinates_of_alive_object(obj, desired_coordinates, from_=from_)
-            self.decrease_food_amount()
-            return
-
-        if isinstance(obj, Predator) and isinstance(
-                self.matrix[desired_coordinates.y][desired_coordinates.x], Herbivore
-        ):
-            herbivore = self.matrix[desired_coordinates.y][desired_coordinates.x]
-            obj.eat(herbivore)
-            herbivore.was_eaten()
-            self._erase_object(herbivore, self.alive_entities_coords[herbivore])
-            self._change_coordinates_of_alive_object(obj, desired_coordinates, from_=from_)
-            return
+            self._erase_object(obj=entity, where=self._get_object_coordinates(entity))
 
     @staticmethod
     def _movements_to_coordinates(movement: Movement, from_: Coordinates) -> Coordinates:

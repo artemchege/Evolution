@@ -19,6 +19,9 @@ class Brain(Protocol):
     def predict(self, *args, **kwargs) -> Tuple:
         pass
 
+    def set_next_movement(self, movement: int):
+        pass
+
 
 class ControlledBrain:
     """ Brain that return next movement that supposed to be set outside, used with gym Trainer to train models """
@@ -30,7 +33,7 @@ class ControlledBrain:
     def get_copy(cls):
         return cls()
 
-    def set_next_movement(self, movement: Movement):
+    def set_next_movement(self, movement: int):
         self.next_movement.append(movement)
 
     def learn(self, *args, **kwargs) -> None:
@@ -53,6 +56,9 @@ class RandomBrain:
     def predict(self, *args, **kwargs) -> Tuple:
         return random.randint(0, len(Movement) - 1), None
 
+    def set_next_movement(self, movement: int):
+        raise NotImplemented('This brain class generates movements itself')
+
 
 class TrainedBrain100000:
     model = PPO.load(
@@ -69,3 +75,6 @@ class TrainedBrain100000:
 
     def predict(self, *args, **kwargs) -> Tuple:
         return self.model.predict(*args, **kwargs)
+
+    def set_next_movement(self, movement: int):
+        raise NotImplemented('This brain class generates movements itself')
