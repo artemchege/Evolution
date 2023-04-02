@@ -74,6 +74,10 @@ class AliveEntity(ABC):
         self.uid = uuid.uuid4()
         self.eaten: bool = False
 
+    @property
+    def is_dead(self) -> bool:
+        return True if self.health <= 0 else False
+
     def increase_lived_for(self) -> None:
         self.lived_for += 1
 
