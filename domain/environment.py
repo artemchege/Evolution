@@ -10,7 +10,7 @@ from domain.exceptions import (
     ObjectNotExistsInEnvironment,
     SetupEnvironmentError,
 )
-from domain.objects import Movement, Coordinates, HerbivoreFood
+from domain.objects import Movement, Coordinates, HerbivoreFood, ObservationRange
 from contrib.utils import logger
 
 
@@ -85,7 +85,13 @@ class Environment:
                 in_process = False
 
     def get_living_object_observation(self, living_obj: AliveEntity) -> List[List]:
-        return self._get_observation(self.alive_entities_coords[living_obj])
+        # TODO: написать/поправить тесты
+        observation_range: ObservationRange = living_obj.get_observation_range()
+        return (
+            self._get_observation_one_cell_around(self.alive_entities_coords[living_obj])
+            if observation_range == ObservationRange.ONE_CELL_AROUND
+            else self._get_observation_two_cells_around(self.alive_entities_coords[living_obj])
+        )
 
     def step_living_regime(self) -> Tuple[List[List], bool]:
         self.increment_cycle()
@@ -168,10 +174,21 @@ class Environment:
             random.randint(1, self.height) - 1,
         )
 
-    def _get_observation(self, point_of_observation: Coordinates) -> List[List]:
+    def _get_observation_one_cell_around(self, point_of_observation: Coordinates) -> List[List]:
         return [
             row[point_of_observation.x - 1:point_of_observation.x + 2]
             for row in self.matrix[point_of_observation.y - 1:point_of_observation.y + 2]
+        ]
+
+    def _get_observation_two_cells_around(self, point_of_observation: Coordinates) -> List[List]:
+        return [
+            [
+                self.matrix[i][j] if 0 <= i < len(self.matrix) and 0 <= j < len(self.matrix[0]) else None
+                for j in range(point_of_observation.x - 2, point_of_observation.x + 3)
+            ]
+            if 0 <= i < len(self.matrix)
+            else [None for _ in range(point_of_observation.x - 2, point_of_observation.x + 3)]
+            for i in range(point_of_observation.y - 2, point_of_observation.y + 3)
         ]
 
     def _get_object_coordinates(self, obj: AliveEntity) -> Optional[Coordinates]:

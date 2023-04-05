@@ -12,7 +12,8 @@ from contrib.utils import logger
 from domain.brain import ControlledBrain
 from domain.entitites import Herbivore, HerbivoreMatrixConverter, Predator, PredatorMatrixConverter
 from domain.environment import Environment
-from domain.objects import TrainSetup
+from domain.exceptions import UnknownObservationSpace
+from domain.objects import TrainSetup, ObservationRange
 from visualization.visualize import Visualizer
 
 
@@ -35,11 +36,17 @@ class EntityTrainer(gym.Env, ABC):
         self.matrix_converted = None
 
     def step(self, action: int) -> Tuple[np.ndarray, int, bool, dict]:
+        reward: int = 0
+
         previous_health: int = self.entity.health
         self.entity.brain.set_next_movement(action)
         _, game_over = self.environment.step_living_regime()
-        current_health: int = self.entity.health
-        reward: int = 1 if current_health > previous_health else 0
+
+        if self.entity.health > previous_health:
+            reward = 1
+        if self.entity.eaten:
+            reward = -5
+
         done: bool = (
             True
             if game_over
@@ -71,17 +78,23 @@ class HerbivoreTrainer(EntityTrainer):
     def __init__(self, *args, **kwargs):
         super(HerbivoreTrainer, self).__init__(*args, **kwargs)
         self.matrix_converted = HerbivoreMatrixConverter()
-        self.observation_space = MultiDiscrete([4] * 9)
+        # TODO: возможно параметризировать
+        self.observation_space = MultiDiscrete([4] * 25)
+        # self.observation_space = MultiDiscrete([4] * 9)
 
     def reset(self) -> np.ndarray:
         self.entity = Herbivore(
             name="Background trainer entity",
             health=self.health_after_birth,
-            brain=ControlledBrain(),
+            brain=ControlledBrain(observation_width=ObservationRange.TWO_CELL_AROUND),  # TODO: возможно вынести куда то
             birth_config=None,
         )
         self.environment.setup_initial_state([self.entity])
         return self._get_entity_observation()
+
+    def _get_entity_observation(self) -> np.ndarray:
+        state_around_obj_list: List[List] = self.environment.get_living_object_observation(self.entity)
+        return self.matrix_converted.from_environment_to_stable_baseline(state_around_obj_list)
 
 
 class PredatorTrainer(EntityTrainer):
@@ -129,3 +142,13 @@ class BrainForTraining:
         )
         brain.model.set_parameters(self.model.get_parameters())
         return brain
+
+    def required_observation_range(self) -> ObservationRange:
+        # TODO: повторяется, отнаследоваться от миксина после рефакторинга
+        observation_space_length: int = len(self.model.observation_space)
+        if observation_space_length == 9:
+            return ObservationRange.ONE_CELL_AROUND
+        elif observation_space_length == 25:
+            return ObservationRange.TWO_CELL_AROUND
+        else:
+            raise UnknownObservationSpace(f'Cannot match the length: {observation_space_length}')

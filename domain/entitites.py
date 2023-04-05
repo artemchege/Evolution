@@ -9,7 +9,7 @@ from contrib.utils import logger
 from domain.brain import Brain
 from domain.exceptions import InvalidEntityState
 
-from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, BirthSetup
+from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, BirthSetup, ObservationRange
 
 
 class MatrixConverter(Protocol):
@@ -61,9 +61,12 @@ class PredatorMatrixConverter:
 
 
 class AliveEntity(ABC):
-
     def __init__(
-            self, name: str, health: int, brain: Brain, birth_config: Optional[BirthSetup] = None
+            self,
+            name: str,
+            health: int,
+            brain: Brain,
+            birth_config: Optional[BirthSetup] = None,
     ):
         self.name = name
         self.health = health
@@ -115,6 +118,9 @@ class AliveEntity(ABC):
         movement: Movement = MOVEMENT_MAPPER_ADJACENT[int(action_num)]
         logger.debug(f'{self} moves {movement} health {self.health}')
         return movement
+
+    def get_observation_range(self) -> ObservationRange:
+        return self.brain.required_observation_range()
 
     def __hash__(self):
         return hash(self.uid)

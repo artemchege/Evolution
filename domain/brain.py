@@ -4,7 +4,8 @@ from typing import Protocol, Tuple
 
 from stable_baselines3 import PPO
 
-from domain.objects import Movement
+from domain.exceptions import UnknownObservationSpace
+from domain.objects import Movement, ObservationRange
 
 
 class Brain(Protocol):
@@ -22,12 +23,16 @@ class Brain(Protocol):
     def set_next_movement(self, movement: int):
         pass
 
+    def required_observation_range(self) -> ObservationRange:
+        pass
+
 
 class ControlledBrain:
     """ Brain that return next movement that supposed to be set outside, used with gym Trainer to train models """
 
-    def __init__(self):
+    def __init__(self, observation_width: ObservationRange = ObservationRange.ONE_CELL_AROUND):
         self.next_movement = []
+        self.observation_range: ObservationRange = observation_width
 
     @classmethod
     def get_copy(cls):
@@ -41,6 +46,9 @@ class ControlledBrain:
 
     def predict(self, *args, **kwargs) -> Tuple:
         return self.next_movement.pop(), None
+
+    def required_observation_range(self) -> ObservationRange:
+        return self.observation_range
 
 
 class RandomBrain:
@@ -59,13 +67,12 @@ class RandomBrain:
     def set_next_movement(self, movement: int):
         raise NotImplemented('This brain class generates movements itself')
 
+    @staticmethod
+    def required_observation_range() -> ObservationRange:
+        return ObservationRange.ONE_CELL_AROUND
 
-class TrainedBrain100000:
-    model = PPO.load(
-        pathlib.Path(__file__).resolve().parent.parent /
-        'Training' / 'saved_models' / 'PPO_model_herbivore_100000_8x8_food50_5'
-    )
 
+class TrainedModelMixin:
     @classmethod
     def get_copy(cls):
         return cls()
@@ -78,3 +85,40 @@ class TrainedBrain100000:
 
     def set_next_movement(self, movement: int):
         raise NotImplemented('This brain class generates movements itself')
+
+    def required_observation_range(self) -> ObservationRange:
+        observation_space_length: int = len(self.model.observation_space)
+        if observation_space_length == 9:
+            return ObservationRange.ONE_CELL_AROUND
+        elif observation_space_length == 25:
+            return ObservationRange.TWO_CELL_AROUND
+        else:
+            raise UnknownObservationSpace(f'Cannot match the length: {observation_space_length}')
+
+
+class TrainedBrainHerbivoreTwoCells100000(TrainedModelMixin):
+    model = PPO.load(
+        pathlib.Path(__file__).resolve().parent.parent /
+        'Training' / 'saved_models' / 'PPO_model_Herbivore_100000_20x20_food60_3_two_cells'
+    )
+
+
+class TrainedBrainHerbivoreOneCells100000(TrainedModelMixin):
+    model = PPO.load(
+        pathlib.Path(__file__).resolve().parent.parent /
+        'Training' / 'saved_models' / 'PPO_model_Herbivore_100000_20x20_food60_3_one_cells'
+    )
+
+
+class TrainedBrainHerbivoreTwoCells1000000(TrainedModelMixin):
+    model = PPO.load(
+        pathlib.Path(__file__).resolve().parent.parent /
+        'Training' / 'saved_models' / 'PPO_model_Herbivore_1000000_20x20_food60_3_two_cells'
+    )
+
+
+class TrainedBrainPredator100000(TrainedModelMixin):
+    model = PPO.load(
+        pathlib.Path(__file__).resolve().parent.parent /
+        'Training' / 'saved_models' / 'PPO_model_Predator_100000_20x20_food30'
+    )

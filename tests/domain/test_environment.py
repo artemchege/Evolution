@@ -215,7 +215,7 @@ class TestEnvironment:
         assert basic_env._is_empty_coordinates(Coordinates(1, 1)) is False
         assert basic_env._is_empty_coordinates(Coordinates(2, 1)) is True
 
-    def test_get_observation(self, basic_env):
+    def test_get_observation_one_cell_center(self, basic_env):
         basic_env.matrix = [
             [1, 2, 3, 4, 5],
             [6, 7, 8, 9, 10],
@@ -224,7 +224,58 @@ class TestEnvironment:
             [21, 22, 23, 24, 25],
         ]
 
-        assert basic_env._get_observation(Coordinates(2, 2)) == [[7, 8, 9], [12, 13, 14], [17, 18, 19]]
+        assert basic_env._get_observation_one_cell_around(Coordinates(2, 2)) == [[7, 8, 9], [12, 13, 14], [17, 18, 19]]
+
+    def test_get_observation_two_cells_center(self, basic_env):
+        basic_env.matrix = [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, 13, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25],
+        ]
+
+        assert basic_env._get_observation_two_cells_around(Coordinates(2, 2)) == [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, 13, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25],
+        ]
+
+    def test_observation_two_cells_corner_upper_left(self, basic_env):
+        basic_env.matrix = [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, 13, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25],
+        ]
+
+        assert basic_env._get_observation_two_cells_around(Coordinates(0, 0)) == [
+            [None, None, None, None, None],
+            [None, None, None, None, None],
+            [None, None, 1, 2, 3],
+            [None, None, 6, 7, 8],
+            [None, None, 11, 12, 13],
+        ]
+
+    def test_get_observation_two_cells_corner_down_right(self, basic_env):
+        basic_env.matrix = [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, 13, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25],
+        ]
+
+        assert basic_env._get_observation_two_cells_around(Coordinates(4, 4)) == [
+            [13, 14, 15, None, None],
+            [18, 19, 20, None, None],
+            [23, 24, 25, None, None],
+            [None, None, None, None, None],
+            [None, None, None, None, None],
+        ]
 
     def test_get_living_object_observation(self, basic_env, basic_herbivore):
         basic_env.matrix = [

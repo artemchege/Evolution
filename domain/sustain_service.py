@@ -1,5 +1,7 @@
-from domain.brain import RandomBrain
-from domain.entitites import Herbivore
+from functools import partial
+
+from domain.brain import RandomBrain, TrainedBrainPredator100000
+from domain.entitites import Herbivore, Predator
 from domain.environment import Environment
 from domain.objects import HerbivoreFood
 
@@ -70,9 +72,7 @@ class HerbivoreSustainConstantService:
         self.initial_herbivore_health = initial_herbivore_health
 
     def initial_sustain(self, environment: Environment) -> None:
-        current_amount: int = len(
-            [herbivore for herbivore in environment.alive_entities_coords.keys() if isinstance(herbivore, Herbivore)]
-        )
+        current_amount: int = environment.herbivores_amount
         diff_in_amount: int = self.required_amount_of_herbivores - current_amount
 
         for _ in range(diff_in_amount):
@@ -81,6 +81,29 @@ class HerbivoreSustainConstantService:
                     name='Food for predator',
                     health=self.initial_herbivore_health,
                     brain=RandomBrain(),
+                    birth_config=None,
+                )
+            )
+
+    def subsequent_sustain(self, environment: Environment) -> None:
+        self.initial_sustain(environment)
+
+
+class TrainedPredatorConstantSustainService:
+    def __init__(self, required_amount_of_predators, initial_predator_health: int):
+        self.required_amount_of_predators = required_amount_of_predators
+        self.initial_predator_health = initial_predator_health
+
+    def initial_sustain(self, environment: Environment) -> None:
+        current_amount: int = environment.predators_amount
+        diff_in_amount: int = self.required_amount_of_predators - current_amount
+
+        for _ in range(diff_in_amount):
+            environment.set_object_randomly_in_environment(
+                Predator(
+                    name='Trained predator',
+                    health=self.initial_predator_health,
+                    brain=TrainedBrainPredator100000(),
                     birth_config=None,
                 )
             )

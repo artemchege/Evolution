@@ -9,6 +9,11 @@ class Coordinates:
     y: int
 
 
+class ObservationRange(enum.Enum):
+    ONE_CELL_AROUND = 'ONE_CELL_AROUND'
+    TWO_CELL_AROUND = 'TWO_CELL_AROUND'
+
+
 class Movement(enum.Enum):
     STAY = 'STAY'
     UP = 'UP'
@@ -74,4 +79,3 @@ class Setup:
     sustain_services: List  # List[SustainService]
     entities: List[EntitySetup]
     cycle_length: Optional[int] = None
-

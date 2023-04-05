@@ -20,3 +20,7 @@ class SetupEnvironmentError(EnvironmentException):
 
 class InvalidEntityState(Exception):
     """ Invalid state """
+
+
+class UnknownObservationSpace(Exception):
+    """ Invalid/unknown observation range for given brain """
