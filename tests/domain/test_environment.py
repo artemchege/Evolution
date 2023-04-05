@@ -9,7 +9,7 @@ from domain.environment import Environment
 from domain.service import HerbivoreFoodSustainConstantService
 from domain.exceptions import NotVacantPlaceException
 from domain.interfaces.setup import HerbivoreFood
-from domain.interfaces.objects import Coordinates, Movement
+from domain.interfaces.objects import Coordinates, Movement, ObservationRange
 
 MOVEMENT_MAPPER_ADJACENT = {
     0: Movement.STAY,
@@ -278,7 +278,7 @@ class TestEnvironment:
             [None, None, None, None, None],
         ]
 
-    def test_get_living_object_observation(self, basic_env, basic_herbivore):
+    def test_get_living_object_observation_1x_range(self, basic_env):
         basic_env.matrix = [
             [1, 2, 3, 4, 5],
             [6, 7, 8, 9, 10],
@@ -286,10 +286,42 @@ class TestEnvironment:
             [16, 17, 18, 19, 20],
             [21, 22, 23, 24, 25],
         ]
-        basic_env._respawn_object(Coordinates(2, 2), basic_herbivore)
 
-        assert basic_env.get_living_object_observation(basic_herbivore) == [
-            [7, 8, 9], [12, basic_herbivore, 14], [17, 18, 19]
+        herbivore = Herbivore(
+            name='Test herb',
+            health=10,
+            brain=ControlledBrain(observation_width=ObservationRange.ONE_CELL_AROUND),
+        )
+
+        basic_env._respawn_object(Coordinates(2, 2), herbivore)
+
+        assert basic_env.get_living_object_observation(herbivore) == [
+            [7, 8, 9], [12, herbivore, 14], [17, 18, 19]
+        ]
+
+    def test_get_living_object_observation_2x_range(self, basic_env):
+        basic_env.matrix = [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, 0, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25],
+        ]
+
+        herbivore = Herbivore(
+            name='Test herb',
+            health=10,
+            brain=ControlledBrain(observation_width=ObservationRange.TWO_CELL_AROUND),
+        )
+
+        basic_env._respawn_object(Coordinates(2, 2), herbivore)
+
+        assert basic_env.get_living_object_observation(herbivore) == [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, herbivore, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25],
         ]
 
     def test_set_object_randomly(self, basic_env, basic_herbivore):
