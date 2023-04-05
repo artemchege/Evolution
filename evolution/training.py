@@ -20,6 +20,7 @@ class EntityTrainer(gym.Env, ABC):
             environment: Environment,
             max_live_training_length: int,
             health_after_birth: int,
+            observation_range: ObservationRange,
             visualizer: Optional[Visualizer] = None,
     ):
         self.environment: Environment = environment
@@ -30,6 +31,7 @@ class EntityTrainer(gym.Env, ABC):
         self.observation_space = None
         self.entity = None
         self.matrix_converted = None
+        self.observation_range: ObservationRange = observation_range
 
     def step(self, action: int) -> Tuple[np.ndarray, int, bool, dict]:
         reward: int = 0
@@ -74,15 +76,17 @@ class HerbivoreTrainer(EntityTrainer):
     def __init__(self, *args, **kwargs):
         super(HerbivoreTrainer, self).__init__(*args, **kwargs)
         self.matrix_converted = HerbivoreMatrixConverter()
-        # TODO: возможно параметризировать
-        self.observation_space = MultiDiscrete([4] * 25)
-        # self.observation_space = MultiDiscrete([4] * 9)
+        self.observation_space = (
+            MultiDiscrete([4] * 9)
+            if self.observation_range == ObservationRange.ONE_CELL_AROUND
+            else MultiDiscrete([4] * 25)
+        )
 
     def reset(self) -> np.ndarray:
         self.entity = Herbivore(
             name="Background trainer entity",
             health=self.health_after_birth,
-            brain=ControlledBrain(observation_width=ObservationRange.TWO_CELL_AROUND),  # TODO: возможно вынести куда то
+            brain=ControlledBrain(observation_width=self.observation_range),
             birth_config=None,
         )
         self.environment.setup_initial_state([self.entity])
@@ -99,13 +103,17 @@ class PredatorTrainer(EntityTrainer):
     def __init__(self, *args, **kwargs):
         super(PredatorTrainer, self).__init__(*args, **kwargs)
         self.matrix_converted = PredatorMatrixConverter()
-        self.observation_space = MultiDiscrete([3] * 9)
+        self.observation_space = (
+            MultiDiscrete([3] * 9)
+            if self.observation_range == ObservationRange.ONE_CELL_AROUND
+            else MultiDiscrete([3] * 25)
+        )
 
     def reset(self) -> np.ndarray:
         self.entity = Predator(
             name="Background predator entity",
             health=self.health_after_birth,
-            brain=ControlledBrain(),
+            brain=ControlledBrain(self.observation_range),
             birth_config=None,
         )
         self.environment.setup_initial_state([self.entity])

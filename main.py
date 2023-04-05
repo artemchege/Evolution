@@ -8,7 +8,7 @@ from domain.environment import Environment
 from domain.interfaces.entities import AliveEntity
 from domain.utils import StatisticsCollector
 from domain.interfaces.setup import Setup
-from run_setups import get_setup_for_trained_model_predator_and_herb
+from run_setups import get_setup_for_trained_model_predator_and_herb, train_best_herbivore
 from visualization.visualize import Visualizer
 
 
@@ -58,6 +58,6 @@ class Runner:
 
 
 if __name__ == '__main__':
-    Runner(setup=get_setup_for_trained_model_predator_and_herb()).run()
-    # train_best_herbivore()
+    # Runner(setup=get_setup_for_trained_model_predator_and_herb()).run()
+    train_best_herbivore()
     # train_best_predator()

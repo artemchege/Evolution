@@ -12,7 +12,7 @@ from domain.entities import Predator, Herbivore
 from domain.environment import Environment
 from domain.interfaces.setup import Setup, WindowSetup, EntitySetup, TrainSetup
 from domain.interfaces.entities import BirthSetup
-from domain.interfaces.objects import Movement
+from domain.interfaces.objects import Movement, ObservationRange
 from domain.service import (
     HerbivoreFoodSustainConstantService,
     HerbivoreFoodSustainEvery3CycleService,
@@ -207,6 +207,7 @@ def train_best_herbivore():
         max_live_training_length=1000,
         health_after_birth=20,
         # visualizer=Visualizer(env),
+        observation_range=ObservationRange.TWO_CELL_AROUND,
     )
 
     # dummy_trainer = DummyVecEnv([lambda: gym_trainer])
@@ -232,6 +233,7 @@ def train_best_predator():
         ),
         max_live_training_length=3000,
         health_after_birth=20,
+        observation_range=ObservationRange.TWO_CELL_AROUND,
     )
     model = PPO(
         "MlpPolicy", gym_trainer, verbose=1, tensorboard_log=None,
