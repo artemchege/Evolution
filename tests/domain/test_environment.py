@@ -2,13 +2,13 @@ import itertools
 
 import pytest
 
-from domain.brain import RandomBrain, ControlledBrain
-from domain.entitites import AliveEntity, Herbivore, Predator
+from domain.interfaces.entities import AliveEntity
+from evolution.brain import RandomBrain, ControlledBrain
+from domain.entities import Herbivore, Predator
 from domain.environment import Environment
 from domain.sustain_service import HerbivoreFoodSustainConstantService
 from domain.exceptions import NotVacantPlaceException
-from domain.objects import Coordinates, HerbivoreFood, Movement, BirthSetup
-
+from domain.interfaces.setup import Coordinates, HerbivoreFood, BirthSetup, Movement
 
 MOVEMENT_MAPPER_ADJACENT = {
     0: Movement.STAY,

@@ -4,10 +4,11 @@ from typing import Union, List
 import pygame
 
 from contrib.utils import logger
-from domain.entitites import Herbivore, Predator
-from domain.environment import Environment, StatisticsCollector
-from domain.objects import Setup
-from run_setups import get_setup_for_trained_model_predator_and_herb, train_best_herbivore, train_best_predator
+from domain.entities import Herbivore, Predator
+from domain.environment import Environment
+from domain.utils import StatisticsCollector
+from domain.interfaces.setup import Setup
+from run_setups import get_setup_for_trained_model_predator_and_herb
 from visualization.visualize import Visualizer
 
 

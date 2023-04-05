@@ -1,66 +1,17 @@
+import random
 import uuid
 from abc import ABC, abstractmethod
-import random
-from typing import List, Optional, Protocol
-
-import numpy as np
+from typing import Optional, List
 
 from contrib.utils import logger
-from domain.brain import Brain
 from domain.exceptions import InvalidEntityState
-
-from domain.objects import Movement, HerbivoreFood, MOVEMENT_MAPPER_ADJACENT, BirthSetup, ObservationRange
-
-
-class MatrixConverter(Protocol):
-
-    def from_environment_to_stable_baseline(self, matrix: List[List]) -> np.ndarray:
-        pass
-
-
-class HerbivoreMatrixConverter:
-
-    @staticmethod
-    def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
-        result = []
-
-        for row in matrix:
-            new_row = []
-            for element in row:
-                if element == 0:
-                    new_row.append(1)
-                elif element is None or isinstance(element, Herbivore):
-                    new_row.append(0)
-                elif isinstance(element, HerbivoreFood):
-                    new_row.append(2)
-                elif isinstance(element, Predator):
-                    new_row.append(3)
-            result.append(new_row)
-
-        return np.array(result).ravel()
-
-
-class PredatorMatrixConverter:
-
-    @staticmethod
-    def from_environment_to_stable_baseline(matrix: List[List]) -> np.ndarray:
-        result = []
-
-        for row in matrix:
-            new_row = []
-            for element in row:
-                if element == 0:
-                    new_row.append(1)
-                elif element is None or isinstance(element, Predator) or isinstance(element, HerbivoreFood):
-                    new_row.append(0)
-                elif isinstance(element, Herbivore):
-                    new_row.append(2)
-            result.append(new_row)
-
-        return np.array(result).ravel()
+from domain.interfaces.brain import Brain
+from domain.interfaces.setup import BirthSetup, Movement, MOVEMENT_MAPPER_ADJACENT, ObservationRange
 
 
 class AliveEntity(ABC):
+    """ Alive entity that lives in an environment """
+
     def __init__(
             self,
             name: str,
@@ -68,6 +19,9 @@ class AliveEntity(ABC):
             brain: Brain,
             birth_config: Optional[BirthSetup] = None,
     ):
+        """ Expects a name, initial health, brain reference and birth config if an entity is going to be replicate
+        itself """
+
         self.name = name
         self.health = health
         self.lived_for = 0
@@ -79,27 +33,40 @@ class AliveEntity(ABC):
 
     @property
     def is_dead(self) -> bool:
-        return True if self.health <= 0 else False
+        """ Predicate of whether entity is dead or no """
+
+        return True if self.health <= 0 or self.eaten else False
 
     def increase_lived_for(self) -> None:
+        """ Increase counter of lived for """
+
         self.lived_for += 1
 
     def increase_health(self, amount: int):
+        """ Increase amount of health """
+
         self.health += amount
 
     def decrease_health(self, amount: int):
+        """ Decrease amount of health """
+
         self.health -= amount
         if self.health < 0:
             raise InvalidEntityState("Health is below 0")
 
     def was_eaten(self):
+        """ Entity was eaten by another entity """
+
         self.eaten = True
 
     @abstractmethod
     def eat(self, food) -> None:
+        """ Eat environment object if eatable """
         pass
 
     def give_birth(self) -> Optional['AliveEntity']:
+        """ Replicate itself if birth_config is specified. Bequeath the current state of development to the child  """
+
         if self.birth_config and self.health > self.birth_config.birth_after:
             child = self.__class__(
                 name=f'Child-{random.randint(1, 1000)}',
@@ -111,6 +78,8 @@ class AliveEntity(ABC):
             return child
 
     def get_move(self, observation: List[List]) -> Movement:
+        """ Return the next movement. Based on the environment observation """
+
         self.decrease_health(1)
         self.increase_lived_for()
         converted_observation = self.matrix_converted.from_environment_to_stable_baseline(observation)
@@ -120,6 +89,8 @@ class AliveEntity(ABC):
         return movement
 
     def get_observation_range(self) -> ObservationRange:
+        """ Get the observation range with which the brain was trained (1x, 2x) """
+
         return self.brain.required_observation_range()
 
     def __hash__(self):
@@ -132,26 +103,3 @@ class AliveEntity(ABC):
 
     def __repr__(self):
         return f'{self.name}, health: {self.health}'
-
-
-class Herbivore(AliveEntity):
-    """ Not trained herbivore, movements are random """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.matrix_converted = HerbivoreMatrixConverter()
-
-    def eat(self, food: HerbivoreFood) -> None:
-        self.health += food.nutrition
-        logger.debug(f'{self.name} ate! New health: {self.health}')
-
-
-class Predator(AliveEntity):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.matrix_converted = PredatorMatrixConverter()
-
-    def eat(self, food: Herbivore) -> None:
-        self.health += food.health
-        logger.debug(f'{self.name} ate {food.name}! New health: {self.health}')

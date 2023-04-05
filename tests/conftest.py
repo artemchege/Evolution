@@ -1,7 +1,7 @@
 import pytest
 
-from domain.brain import RandomBrain, ControlledBrain
-from domain.entitites import Herbivore, Predator
+from evolution.brain import ControlledBrain
+from domain.entities import Herbivore, Predator
 from domain.environment import Environment
 
 

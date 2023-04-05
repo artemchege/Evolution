@@ -1,4 +1,3 @@
-import random
 from abc import ABC
 from enum import EnumMeta
 from typing import List, Tuple, Optional
@@ -6,14 +5,11 @@ from typing import List, Tuple, Optional
 import gym
 import numpy as np
 from gym.spaces import Discrete, MultiDiscrete
-from stable_baselines3 import PPO
 
-from contrib.utils import logger
-from domain.brain import ControlledBrain
-from domain.entitites import Herbivore, HerbivoreMatrixConverter, Predator, PredatorMatrixConverter
+from evolution.brain import ControlledBrain
+from domain.entities import Herbivore, Predator, HerbivoreMatrixConverter, PredatorMatrixConverter
 from domain.environment import Environment
-from domain.exceptions import UnknownObservationSpace
-from domain.objects import TrainSetup, ObservationRange
+from domain.interfaces.setup import ObservationRange
 from visualization.visualize import Visualizer
 
 
@@ -114,41 +110,3 @@ class PredatorTrainer(EntityTrainer):
         )
         self.environment.setup_initial_state([self.entity])
         return self._get_entity_observation()
-
-
-class BrainForTraining:
-    def __init__(
-            self, train_setup: TrainSetup, gym_trainer: PredatorTrainer
-    ):
-        self.train_setup: TrainSetup = train_setup
-        self.gym_trainer: PredatorTrainer = gym_trainer
-        self.model = PPO(
-            "MlpPolicy", self.gym_trainer, verbose=1, tensorboard_log=None, n_steps=self.train_setup.learn_n_steps,
-        )
-
-    def predict(self, *args, **kwargs) -> Tuple:
-        if random.randint(0, self.train_setup.learn_frequency) == 0:
-            logger.debug(f"Brain {id(self)} started learning")
-            self.learn(total_timesteps=self.train_setup.learn_timesteps)
-        return self.model.predict(*args, **kwargs)
-
-    def learn(self, *args, **kwargs):
-        return self.model.learn(*args, **kwargs)
-
-    def get_copy(self):
-        brain = self.__class__(
-            train_setup=self.train_setup,
-            gym_trainer=self.gym_trainer,
-        )
-        brain.model.set_parameters(self.model.get_parameters())
-        return brain
-
-    def required_observation_range(self) -> ObservationRange:
-        # TODO: повторяется, отнаследоваться от миксина после рефакторинга
-        observation_space_length: int = len(self.model.observation_space)
-        if observation_space_length == 9:
-            return ObservationRange.ONE_CELL_AROUND
-        elif observation_space_length == 25:
-            return ObservationRange.TWO_CELL_AROUND
-        else:
-            raise UnknownObservationSpace(f'Cannot match the length: {observation_space_length}')

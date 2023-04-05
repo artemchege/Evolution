@@ -2,15 +2,23 @@ from functools import partial
 
 from stable_baselines3 import PPO
 
-from domain.brain import TrainedBrainPredator100000, TrainedBrainHerbivoreTwoCells1000000, \
-    TrainedBrainHerbivoreTwoCells100000
-from domain.entitites import Predator, Herbivore
+from evolution.brain import (
+    TrainedBrainPredator100000,
+    TrainedBrainHerbivoreTwoCells1000000,
+    TrainedBrainHerbivoreTwoCells100000,
+    BrainForTraining,
+)
+from domain.entities import Predator, Herbivore
 from domain.environment import Environment
-from domain.objects import Setup, WindowSetup, EntitySetup, BirthSetup, TrainSetup, Movement
-from domain.sustain_service import HerbivoreFoodSustainConstantService, HerbivoreFoodSustainEvery3CycleService, \
-    HerbivoreSustainConstantService, TrainedPredatorConstantSustainService
+from domain.interfaces.setup import Setup, WindowSetup, EntitySetup, TrainSetup, BirthSetup, Movement
+from domain.sustain_service import (
+    HerbivoreFoodSustainConstantService,
+    HerbivoreFoodSustainEvery3CycleService,
+    HerbivoreSustainConstantService,
+    TrainedPredatorConstantSustainService
+)
 from evolution.callbacks import TrainerVisualizer
-from evolution.training import BrainForTraining, HerbivoreTrainer, PredatorTrainer
+from evolution.training import HerbivoreTrainer, PredatorTrainer
 
 
 def get_setup_for_trained_model_predator_and_herb():

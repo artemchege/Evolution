@@ -1,35 +1,22 @@
-import json
 import random
 from copy import copy
-from typing import Optional, List, Any, Tuple, Dict, Protocol
+from typing import Optional, List, Any, Tuple
 
-from domain.entitites import AliveEntity, Predator, Herbivore
+from domain.entities import Predator, Herbivore
 from domain.exceptions import (
     NotVacantPlaceException,
     UnsupportedMovement,
     ObjectNotExistsInEnvironment,
     SetupEnvironmentError,
 )
-from domain.objects import Movement, Coordinates, HerbivoreFood, ObservationRange
+from domain.interfaces.entities import AliveEntity
+from domain.interfaces.environment import EnvironmentInterface
+from domain.interfaces.setup import Coordinates, HerbivoreFood, ObservationRange, Movement
 from contrib.utils import logger
 
 
-class Environment:
-    """ Environment that represent world around living objects and key rules. Core domain object """
-
-    def __init__(
-            self, window_width: int, window_height: int, sustain_services: List['SustainService'],
-    ):
-        self.width: int = window_width
-        self.height: int = window_height
-        self.sustain_services: List[SustainService] = sustain_services
-        self.matrix: List[List] = self._create_blank_matrix()
-
-        # Place for storage abstraction
-        self.alive_entities_coords: Dict[AliveEntity, Coordinates] = {}
-
-        self.cycle: int = 0
-        self.herbivore_food_amount: int = 0
+class Environment(EnvironmentInterface):
+    """ EnvironmentInterface realization """
 
     @property
     def has_space_left(self) -> bool:
@@ -147,7 +134,7 @@ class Environment:
 
         return self.matrix
 
-    def _create_blank_matrix(self):
+    def _create_blank_matrix(self) -> List[List]:
         self.herbivore_food_amount = 0
         self.alive_entities_coords = {}
         self.cycle = 0
@@ -256,40 +243,3 @@ class Environment:
             raise UnsupportedMovement(f'This movement is not supported: {movement}')
 
         return desired_coordinates
-
-
-class SustainService(Protocol):
-    """ Service that watch after some objects in environment and replicate them if needed """
-
-    def initial_sustain(self, environment: Environment) -> None:
-        pass
-
-    def subsequent_sustain(self, environment: Environment) -> None:
-        pass
-
-
-class StatisticsCollector:
-
-    def __init__(self, environment: Environment, filename: str):
-        self.environment: Environment = environment
-        self.filename: str = filename
-        self.snapshots: List[dict] = []
-
-    def make_snapshot(self):
-        self.snapshots.append(
-            {
-                "cycle": self.environment.cycle,
-                "alive_entities": len(self.environment.alive_entities_coords),
-                "herbivores_amount": len(
-                    [entity for entity in self.environment.alive_entities_coords.keys() if isinstance(entity, Herbivore)]
-                ),
-                "predators_amount": len(
-                    [entity for entity in self.environment.alive_entities_coords.keys() if isinstance(entity, Predator)]
-                ),
-                "herbivore_food": self.environment.herbivore_food_amount,
-            }
-        )
-
-    def dump_to_file(self):
-        with open(f"statistics/{self.filename}.json", "w") as file:
-            json.dump(self.snapshots, file)

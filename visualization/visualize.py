@@ -2,9 +2,10 @@ from typing import List
 
 import pygame
 
-from domain.entitites import AliveEntity, Predator
+from domain.entities import Predator
 from domain.environment import Environment
-from domain.objects import Coordinates, HerbivoreFood
+from domain.interfaces.entities import AliveEntity
+from domain.interfaces.setup import Coordinates, HerbivoreFood
 from visualization.constants import GREY_DARK, GREY_LIGHT, GREEN, BLUE, BLACK, RED
 
 
@@ -102,4 +103,3 @@ class Visualizer:
                     self.FPS = 1
                 elif event.key == pygame.K_f:
                     self.FPS = 30
-
