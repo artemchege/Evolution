@@ -1,11 +1,11 @@
 import random
-from typing import Union, List
+from typing import List
 
 import pygame
 
 from contrib.utils import logger
-from domain.entities import Herbivore, Predator
 from domain.environment import Environment
+from domain.interfaces.entities import AliveEntity
 from domain.utils import StatisticsCollector
 from domain.interfaces.setup import Setup
 from run_setups import get_setup_for_trained_model_predator_and_herb
@@ -27,11 +27,11 @@ class Runner:
         self.statistics_collector = StatisticsCollector(environment=self.environment, filename='stat')
 
     def run(self):
-        entities: List[Union[Predator, Herbivore]] = [
+        entities: List[AliveEntity] = [
             entity_setup.entity_type(
                 health=entity_setup.initial_health,
                 name=f"{entity_setup.entity_type.__name__}#{random.randint(1, 10000)}",
-                brain=entity_setup.brain(),
+                brain=entity_setup.brain(),  # noqa
                 birth_config=entity_setup.birth,
             )
             for entity_setup in self.setup.entities

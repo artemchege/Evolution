@@ -5,7 +5,8 @@ import pygame
 from domain.entities import Predator
 from domain.environment import Environment
 from domain.interfaces.entities import AliveEntity
-from domain.interfaces.setup import Coordinates, HerbivoreFood
+from domain.interfaces.setup import HerbivoreFood
+from domain.interfaces.objects import Coordinates
 from visualization.constants import GREY_DARK, GREY_LIGHT, GREEN, BLUE, BLACK, RED
 
 

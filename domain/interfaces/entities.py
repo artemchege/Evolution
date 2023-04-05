@@ -1,12 +1,20 @@
 import random
 import uuid
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Optional, List
 
 from contrib.utils import logger
 from domain.exceptions import InvalidEntityState
 from domain.interfaces.brain import Brain
-from domain.interfaces.setup import BirthSetup, Movement, MOVEMENT_MAPPER_ADJACENT, ObservationRange
+from domain.interfaces.objects import ObservationRange, Movement, MOVEMENT_MAPPER_ADJACENT
+
+
+@dataclass(frozen=True)
+class BirthSetup:
+    decrease_health_after_birth: int
+    health_after_birth: int
+    birth_after: int
 
 
 class AliveEntity(ABC):
@@ -103,3 +111,4 @@ class AliveEntity(ABC):
 
     def __repr__(self):
         return f'{self.name}, health: {self.health}'
+

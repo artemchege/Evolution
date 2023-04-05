@@ -6,7 +6,8 @@ import gym
 from stable_baselines3 import PPO
 
 from contrib.utils import logger
-from domain.interfaces.setup import TrainSetup, ObservationRange, Movement
+from domain.interfaces.setup import TrainSetup
+from domain.interfaces.objects import ObservationRange, Movement
 
 from domain.exceptions import UnknownObservationSpace
 

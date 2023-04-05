@@ -1,6 +1,6 @@
 from typing import Protocol, Tuple
 
-from domain.interfaces.setup import ObservationRange
+from domain.interfaces.objects import ObservationRange
 
 
 class Brain(Protocol):

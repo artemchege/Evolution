@@ -10,8 +10,10 @@ from evolution.brain import (
 )
 from domain.entities import Predator, Herbivore
 from domain.environment import Environment
-from domain.interfaces.setup import Setup, WindowSetup, EntitySetup, TrainSetup, BirthSetup, Movement
-from domain.sustain_service import (
+from domain.interfaces.setup import Setup, WindowSetup, EntitySetup, TrainSetup
+from domain.interfaces.entities import BirthSetup
+from domain.interfaces.objects import Movement
+from domain.service import (
     HerbivoreFoodSustainConstantService,
     HerbivoreFoodSustainEvery3CycleService,
     HerbivoreSustainConstantService,

@@ -9,7 +9,7 @@ from gym.spaces import Discrete, MultiDiscrete
 from evolution.brain import ControlledBrain
 from domain.entities import Herbivore, Predator, HerbivoreMatrixConverter, PredatorMatrixConverter
 from domain.environment import Environment
-from domain.interfaces.setup import ObservationRange
+from domain.interfaces.objects import ObservationRange
 from visualization.visualize import Visualizer
 
 

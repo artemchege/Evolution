@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import List, Dict, Any, Tuple
 
 from domain.interfaces.entities import AliveEntity
-from domain.interfaces.setup import Coordinates
+from domain.interfaces.objects import Coordinates
 
 
 class EnvironmentInterface:

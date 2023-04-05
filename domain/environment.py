@@ -11,7 +11,8 @@ from domain.exceptions import (
 )
 from domain.interfaces.entities import AliveEntity
 from domain.interfaces.environment import EnvironmentInterface
-from domain.interfaces.setup import Coordinates, HerbivoreFood, ObservationRange, Movement
+from domain.interfaces.setup import HerbivoreFood
+from domain.interfaces.objects import Coordinates, ObservationRange, Movement
 from contrib.utils import logger
 
 
