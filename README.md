@@ -1,5 +1,5 @@
 
-# Project: "Pray and Predator"
+# Project: "Prey and Predator"
 
 This project is dedicated to the investigation and understanding of cyber evolution phenomena using reinforcement learning techniques.
 
@@ -25,7 +25,7 @@ In this project, we explore the concept of cyber evolution through the lens of t
 
 Edible entities (plants/bushes) that possess a certain amount of nutrition (a numerical value). When herbivores consume these edible entities, they increase their own health based on the nutritional value of the consumed entity.
 
-##Living entities:
+## Living entities:
 
 - Herbivores, which feed on edible entities.
 - Predators, which feed on herbivores.
