@@ -96,6 +96,33 @@ Detailed instructions for running the project will be provided in the following 
 
 - To run this project, you need to clone the repository, activate the environment, and install all the required libraries listed in the "requirements" file. Follow the instructions for running the project.
 
+Model training Mode. 
+![pics/model_training_mode.png](pics/model_training_mode.png)
+
+While running this mode you can see the model training logs in real time.
+You can read more about the model training mode in the stable_baselines3 documentation [here](https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#train-a-model-from-scratch).
+The most important metric is the mean reward, which is the average reward per episode. THe reward is the sum of all the rewards obtained during the episode. The higher the mean reward, the better the model is performing.
+
+Command for running this mode: 
+
+    train_the_best_model 
+
+Arguments: 
+    
+        --width: The width of the grid. 
+        --height: The height of the grid. 
+        --entity_type: The type of the entity. Herbivore or predator.
+        --health_after_birth: The health of the entity after birth. 
+        --observation_range: The observation range of the entity. One or two cells around.
+        --total_timesteps: The total number of timesteps for training. 
+        --path_for_saving: The path for saving the model.
+
+Example: 
+
+    python3 main.py train_the_best_model --width 20 --height 20 --entity_type predator --health_after_birth 10 --observation_range one_cell_around --total_timesteps 1000  --path_for_saving your_model_name
+
+Sustainers will be set automatically based on the entity type in ration 10% of the grid size.
+
 ## Collaborators
 
 Feel free to explore our research, experiments, and findings in this repository. You can find our code, datasets, and documentation to replicate our experiments or extend our research. We encourage collaboration and contributions from the open-source community to enhance our understanding of cyber evolution.

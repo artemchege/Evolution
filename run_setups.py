@@ -1,4 +1,6 @@
+import os
 from functools import partial
+from typing import Type
 
 from stable_baselines3 import PPO
 
@@ -8,7 +10,7 @@ from evolution.brain import (
     TrainedBrainHerbivoreTwoCells100000,
     BrainForTraining,
 )
-from domain.entities import Predator, Herbivore
+from domain.entities import Predator, Herbivore, EntityType
 from domain.environment import Environment
 from domain.interfaces.setup import Setup, WindowSetup, EntitySetup, TrainSetup
 from domain.interfaces.entities import BirthSetup
@@ -20,7 +22,8 @@ from domain.service import (
     TrainedPredatorConstantSustainService
 )
 from evolution.callbacks import TrainerVisualizer
-from evolution.training import HerbivoreTrainer, PredatorTrainer
+from evolution.training import HerbivoreTrainer, PredatorTrainer, EntityTrainer
+from visualization.visualize import Visualizer
 
 
 def get_setup_for_trained_model_predator_and_herb():
@@ -187,57 +190,78 @@ def setup_for_real_time_training_visualization_predators_evolving():
     )
 
 
-def train_best_herbivore():
+def get_default_sustain_services(
+        entity_type: EntityType,
+        amount: int,
+):
+    if entity_type == EntityType.HERBIVORE:
+        return [
+            HerbivoreFoodSustainConstantService(required_amount_of_herb_food=amount, food_nutrition=10),
+        ]
+    elif entity_type == EntityType.PREDATOR:
+        return [
+            HerbivoreSustainConstantService(required_amount_of_herbivores=amount, initial_herbivore_health=10),
+        ]
+    else:
+        raise ValueError(f"Unknown entity type: {entity_type}")
+
+
+def get_default_trainer(
+        entity_type: EntityType,
+        environment: Environment,
+        max_live_training_length: int,
+        health_after_birth: int,
+        observation_range: ObservationRange,
+) -> EntityTrainer:
+    if entity_type == EntityType.HERBIVORE:
+        return HerbivoreTrainer(
+            movement_class=Movement,
+            environment=environment,
+            max_live_training_length=max_live_training_length,
+            health_after_birth=health_after_birth,
+            observation_range=observation_range,
+        )
+    elif entity_type == EntityType.PREDATOR:
+        return PredatorTrainer(
+            movement_class=Movement,
+            environment=environment,
+            max_live_training_length=max_live_training_length,
+            health_after_birth=health_after_birth,
+            observation_range=observation_range,
+        )
+    else:
+        raise ValueError(f"Unknown entity type: {entity_type}")
+
+
+def train_the_best_entity(
+        window_width: int,
+        window_height: int,
+        max_live_training_length: int,
+        health_after_birth: int,
+        total_timestep: int,
+        observation_range: ObservationRange,
+        entity_type: EntityType,
+        save_path: str,
+):
     env = Environment(
-            window_width=20,
-            window_height=20,
-            sustain_services=[
-                HerbivoreFoodSustainEvery3CycleService(
-                    initial_food_amount=60, food_nutrition=3,
-                ),
-                TrainedPredatorConstantSustainService(
-                    required_amount_of_predators=5, initial_predator_health=100,
-                )
-            ],
-    )
-
-    gym_trainer = HerbivoreTrainer(
-        movement_class=Movement,
-        environment=env,
-        max_live_training_length=1000,
-        health_after_birth=20,
-        # visualizer=Visualizer(env),
-        observation_range=ObservationRange.TWO_CELL_AROUND,
-    )
-
-    # dummy_trainer = DummyVecEnv([lambda: gym_trainer])
-
-    model = PPO(
-        "MlpPolicy", gym_trainer, verbose=1, tensorboard_log=None,
-    )
-    model.learn(total_timesteps=1_000_000, progress_bar=True, callback=TrainerVisualizer())  # TrainerVisualizator()
-    # save_path = os.path.join('Training', 'saved_models', 'PPO_model_Herbivore_100000)_20x20_food60_3_two_cells')
-    # model.save(save_path)
-
-
-def train_best_predator():
-    gym_trainer = PredatorTrainer(
-        movement_class=Movement,
-        environment=Environment(
-            window_width=20,
-            window_height=20,
-            sustain_services=[HerbivoreSustainConstantService(
-                    required_amount_of_herbivores=30, initial_herbivore_health=10,
-                )
-            ],
+        window_width=window_width,
+        window_height=window_height,
+        sustain_services=get_default_sustain_services(
+            entity_type=entity_type,
+            amount=int(0.1 * window_width * window_height)
         ),
-        max_live_training_length=3000,
-        health_after_birth=20,
-        observation_range=ObservationRange.TWO_CELL_AROUND,
+    )
+    gym_trainer: EntityTrainer = get_default_trainer(
+        entity_type=entity_type,
+        environment=env,
+        max_live_training_length=max_live_training_length,
+        health_after_birth=health_after_birth,
+        observation_range=observation_range,
     )
     model = PPO(
         "MlpPolicy", gym_trainer, verbose=1, tensorboard_log=None,
     )
-    model.learn(total_timesteps=100000, progress_bar=True)
-    # save_path = os.path.join('Training', 'saved_models', 'PPO_model_Predator_100000_20x20_food30')
-    # model.save(save_path)
+    model.learn(total_timesteps=total_timestep, progress_bar=True)
+    save_path = os.path.join('Training', 'saved_models', save_path)
+    model.save(save_path)
+

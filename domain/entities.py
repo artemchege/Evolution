@@ -8,6 +8,11 @@ from domain.interfaces.entities import AliveEntity
 from domain.interfaces.setup import HerbivoreFood
 
 
+class EntityType:
+    HERBIVORE = 'herbivore'
+    PREDATOR = 'predator'
+
+
 class Herbivore(AliveEntity):
     """ Not trained herbivore, movements are random """
 

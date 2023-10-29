@@ -4,8 +4,9 @@ from domain.entities import Herbivore, Predator
 from domain.environment import Environment
 from domain.interfaces.setup import HerbivoreFood
 
-# TODO: возможно отрефачить, код повторяется из раза в раз, параметризировать фабрику которая бы возвращала састейнеров
-# TODO: наверное перенести в service или utils
+# TODO: Refactoring required, create an interfacw that accept
+#  initial entity amount, desired,
+#  condition function and object to create
 
 
 class HerbivoreFoodSustainEvery3CycleService(SustainEnvironmentService):
