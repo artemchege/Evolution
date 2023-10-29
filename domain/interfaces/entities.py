@@ -50,19 +50,19 @@ class AliveEntity(ABC):
 
         self.lived_for += 1
 
-    def increase_health(self, amount: int):
+    def increase_health(self, amount: int) -> None:
         """ Increase amount of health """
 
         self.health += amount
 
-    def decrease_health(self, amount: int):
+    def decrease_health(self, amount: int) -> None:
         """ Decrease amount of health """
 
         self.health -= amount
         if self.health < 0:
             raise InvalidEntityState("Health is below 0")
 
-    def was_eaten(self):
+    def was_eaten(self) -> None:
         """ Entity was eaten by another entity """
 
         self.eaten = True

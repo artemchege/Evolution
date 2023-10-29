@@ -1,9 +1,10 @@
 venv
 checkers_tutorial/
-Training/
+Training/logs/
 .idea/
 .ipynb_checkpoints/
 stable_diff_tutorial/
 statistics/*
 main.ipynb
 stat.json
+plans_and_todos.md

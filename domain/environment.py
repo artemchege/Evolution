@@ -73,7 +73,6 @@ class Environment(EnvironmentInterface):
                 in_process = False
 
     def get_living_object_observation(self, living_obj: AliveEntity) -> List[List]:
-        # TODO: написать/поправить тесты
         observation_range: ObservationRange = living_obj.get_observation_range()
         return (
             self._get_observation_one_cell_around(self.alive_entities_coords[living_obj])
