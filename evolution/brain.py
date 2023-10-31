@@ -111,6 +111,15 @@ class TrainedBrainPredator100000(TrainedModelMixin):
     )
 
 
+def get_user_trained_brain(model_name: str) -> TrainedModelMixin:
+    brain = TrainedModelMixin()
+    brain.model = PPO.load(
+        pathlib.Path(__file__).resolve().parent.parent /
+        'Training' / 'saved_models' / model_name
+    )
+    return brain
+
+
 class BrainForTraining:
     def __init__(
             self, train_setup: TrainSetup, gym_trainer: gym.Env

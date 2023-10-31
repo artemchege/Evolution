@@ -96,7 +96,7 @@ Detailed instructions for running the project will be provided in the following 
 
 - To run this project, you need to clone the repository, activate the environment, and install all the required libraries listed in the "requirements" file. Follow the instructions for running the project.
 
-Model training Mode. 
+### Model training Mode. 
 ![pics/model_training_mode.png](pics/model_training_mode.png)
 
 While running this mode you can see the model training logs in real time.
@@ -121,7 +121,77 @@ Example:
 
     python3 main.py train_the_best_model --width 20 --height 20 --entity_type predator --health_after_birth 10 --observation_range one_cell_around --total_timesteps 1000  --path_for_saving your_model_name
 
+### Single Training Mode
+
+    # TODO: completed, doc to be updated
+
+### Life Mode herbivores only 
+
+Command for running this mode:
+
+    herbivore_visualization_train_from_scratch
+
+Arguments: 
+
+        --width: The width of the grid. 
+        --height: The height of the grid. 
+        --start_herb_amount: The number of herbivores at the beginning. 
+        --amount_of_herb_food: The amount of herb food on the grid. 
+        --herb_food_nutrition: The nutrition level of the herb food. 
+        --learning_frequency: The frequency of learning. 1 - every step, 2 - every second step, etc.
+        --learning_timesteps: The number of timesteps for learning. Intensity of learning. You can read more about it in the stable_baselines3 documentation [here](https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#train-a-model-from-scratch).
+        --learning_n_steps: The number of steps for learning. Intensity of learning. You can read more about it in the stable_baselines3 documentation [here](https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#train-a-model-from-scratch).
+        --health_after_birth: The health of the entity after birth. 
+        --observation_range: The observation range of the entity. One or two cells around. 1 for one cell around, 2 for two cells around. 
+        --decrease_parent_health_after_birth: The amount of health to decrease after birth. 
+        --child_health_after_birth: The health of the child after birth. 
+        --birth_after_health_amount: The amount of health for birth. 
+        --initial_herb_health: The initial health of the herbivores.
+
+Example: 
+
+    python main.py herbivore_visualization_train_from_scratch --width 50 --height 50 --amount_of_herb_food 500 --herb_food_nutrition 10 --learning_frequency 5 --learning_timesteps 1000 --learning_n_steps 512 --health_after_birth 10 --observation_range 1 --start_herb_amount 10 --decrease_parent_health_after_birth 10 --child_health_after_birth 10 --birth_after_health_amount 20 --initial_herb_health 10
+
+### Live Mode predators only
+
+Command for running this mode:
+
+    predator_visualization_train_from_scratch
+
+Arguments: 
+
+        --width: The width of the grid. 
+        --height: The height of the grid. 
+        --start_pred_amount: The number of predators at the beginning. 
+        --amount_of_pred_food: The amount of predator food on the grid. 
+        --pred_food_nutrition: The nutrition level of the predator food. 
+        --learning_frequency: The frequency of learning. 1 - every step, 2 - every second step, etc.
+        --learning_timesteps: The number of timesteps for learning. Intensity of learning. You can read more about it in the stable_baselines3 documentation [here](https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#train-a-model-from-scratch).
+        --learning_n_steps: The number of steps for learning. Intensity of learning. You can read more about it in the stable_baselines3 documentation [here](https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#train-a-model-from-scratch).
+        --health_after_birth: The health of the entity after birth. 
+        --observation_range: The observation range of the entity. One or two cells around. 1 for one cell around, 2 for two cells around. 
+        --decrease_parent_health_after_birth: The amount of health to decrease after birth. 
+        --child_health_after_birth: The health of the child after birth. 
+        --birth_after_health_amount: The amount of health for birth. 
+        --initial_pred_health: The initial health of the predators.
+
+Example: 
+
+    python main.py predator_visualization_train_from_scratch --width 30 --height 30 --amount_of_pred_food 5 --pred_food_nutrition 10  --learning_frequency 10 --learning_timesteps 100 --learning_n_steps 512 --health_after_birth 10 --observation_range 1 --decrease_parent_health_after_birth 10 --child_health_after_birth 10 --birth_after_health_amount 20 --start_pred_amount 1 --initial_pred_health 30
+
+
+### Live mode with both predators and herbivores
+
+    # TODO: completed, doc to be updated
+
+
+### Life Mode with Pre-trained Models
+
+    # TODO: completed, doc to be updated
+
+
 Sustainers will be set automatically based on the entity type in ration 10% of the grid size.
+Your model will be saved in the Training/saved_models folder.
 
 ## Collaborators
 
@@ -139,8 +209,10 @@ We welcome contributions, feedback, and collaboration from researchers, develope
 
 For inquiries or collaboration opportunities, please contact [my email](mailto:artemchege@me.com).
 
+## Hot keys during visualization
 
+By default, visualization is running in slow mode. To turn fast mode press F key, to return to slow mode press S key. 
 
-How to run tests: 
+## How to run tests: 
 
     python3 pytest tests/
